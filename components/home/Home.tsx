@@ -77,8 +77,8 @@ export default function Home() {
         {/* Info Section */}
         <div className="flex flex-col py-12 gap-8 items-center text-2xl ">
             <p>Locally grown in Squirrel Hill</p>
-            <p>Order online for pickup or <span className="text-(--rust)">visit our stand</span></p>
-            <Link href='/shop' className="text-white bg-(--rust) box-border border border-transparent hover:bg-(--dark-rust) font-base leading-5 rounded-md text-lg px-4 py-2">
+            <p>Order online for pickup or <Link href="#market-info" className="text-(--rust)">visit our stand</Link></p>
+            <Link href='/shop' className="text-white bg-(--teal) box-border border border-transparent hover:bg-(--teal-hover) font-base leading-5 rounded-md text-lg px-4 py-2">
                 <span className="flex place-items-center gap-2">
                     See What's Available
                     <MoveRight />
@@ -119,7 +119,7 @@ export default function Home() {
         </div>
 
         
-        <div className="relative bg-(--secondary) py-12">
+        <div id="market-info" className="relative bg-(--secondary) py-12">
             
             {/* Farmer's market stand information */}
             <div className="relative flex flex-col md:flex-row max-w-6xl mx-auto mb-12 justify-center md:gap-10">
@@ -150,7 +150,7 @@ export default function Home() {
                                 <div className="relative h-54">
                                     <Image src={category.image} alt="photo of seedling" fill className="object-cover" />
                                 </div>
-                                <div className="relative text-lg text-(--header) bg-[#68715B] p-1">
+                                <div className="relative text-lg text-(--header) bg-(--teal-hover) p-1">
                                     <p>{category.label}</p>
                                 </div>
                             </Link>
