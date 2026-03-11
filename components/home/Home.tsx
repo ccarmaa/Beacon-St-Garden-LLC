@@ -11,7 +11,7 @@ export default function Home() {
     /* Banner photo:
        Change link here to update banner photo
     */
-   const bannerSrc = "/flowers.jpg";
+   const bannerSrc = "/banner_seedlings.jpeg";
 
     /* For Shop By Category:
        Change values here to add a category or update labels, links, and images */
@@ -64,10 +64,11 @@ export default function Home() {
         {/* Home banner */}
         <div className="relative flex items-center h-[35vh]">
             <div className="z-1">
-                <Image src={bannerSrc} alt="image of flowers" fill style={{objectFit: 'cover'}} />
+                <Image src={bannerSrc} alt="image of seedlings" fill style={{objectFit: 'cover'}} />
             </div>
             <div className="z-2 sm:w-[80vw] md:w-[40vw] h-7/10 ml-[3vw] p-2 bg-(--header)" >
                 <div className="relative flex flex-col w-full h-full p-2 justify-center items-center gap-2 bg-(--header) border-2 border-(--footer)">
+                    <Image src="/logo_beaconstgardens_noback.png" alt="Logo" width={150} height={173}/>
                     <h1 className="text-3xl font-semibold">Beacon Street Gardens</h1>
                     <p className="">Welcoming tagline</p>
                 </div>
@@ -124,7 +125,7 @@ export default function Home() {
             {/* Farmer's market stand information */}
             <div className="relative flex flex-col md:flex-row max-w-6xl mx-auto mb-12 justify-center md:gap-10">
                 <div className="relative basis-1/2 w-full max-w-lg h-64">
-                    <Image src="/market.jpg" alt="photo of farmer's market stand" fill className="object-cover rounded-sm" />
+                    <Image src="/stand_photo.jpeg" alt="photo of farmer's market stand" fill className="object-cover rounded-sm" />
                 </div>
                 <div className="relative flex flex-col basis-1/2 px-6 items-start gap-3">
                     <h2 className="text-3xl font-medium">Visit Our Stand</h2>
