@@ -1,68 +1,79 @@
 'use client'
-import { useState } from 'react';
-import Image from 'next/image'
-import Link from 'next/link'
-import { MoveRight } from 'lucide-react'
-import { ChevronRight } from 'lucide-react'
-import { ChevronLeft } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { createClient } from "@/lib/supabase/client";
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from "next/navigation";
+import {
+    ChevronLeft,
+    ChevronRight,
+    MoveRight,
+    Loader2,
+} from 'lucide-react';
+
+/* Banner photo: 
+    Change link here to update banner photo */
+const bannerSrc = "/banner_seedlings.jpeg";
+
+/* Shop By Category:
+       Change values here to add a category or update labels, links, and images */
+const categories = [
+    { id: 1, href: '/shop?category=Vegetable/Fruit', label: 'Fruit & Vegetable Plants', image: '/pepper-photo.jpg' },
+    { id: 2, href: '/shop?category=Flowers', label: 'Flowers', image: '/colorful-flowers.jpg' },
+    { id: 3, href: '/shop?category=House Plant', label: 'House Plants', image: '/potted-plant.jpg' },
+    { id: 4, href: '/shop?category=Herbs', label: 'Herbs', image: '/seed.jpg' },
+];
+
+function formatDate(dateStr: string | null) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export default function Home() {
+    const supabase = createClient();
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const [posts, setPosts] = useState<any[]>([]);
+    const [postIndex, setPostIndex] = useState(0);
 
-    /* Banner photo:
-       Change link here to update banner photo
-    */
-   const bannerSrc = "/banner_seedlings.jpeg";
-
-    /* For Shop By Category:
-       Change values here to add a category or update labels, links, and images */
-    const categories = [
-        { id: 1, href: '/shop?category=Vegetables', label: 'Vegetables', image: '/pepper-photo.jpg' },
-        { id: 2, href: '/shop?category=Flowers', label: 'Flowers', image: '/colorful-flowers.jpg' },
-        { id: 3, href: '/shop?category=Plants', label: 'House Plants', image: '/potted-plant.jpg' },
-        { id: 4, href: '/shop', label: 'Seeds', image: '/seed.jpg' },
-        // { id: 5, href: '/shop', label: 'All Products', image: '/boot-flowers.jpg' }
-    ];
-    
-    // temporary; replace with actual posts pulled from database
-    const fillerString = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pretium a ligula at vestibulum. \
-            Curabitur laoreet sed lectus accumsan tincidunt. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pretium a ligula at vestibulum. Curabitur laoreet sed lectus accumsan tincidunt. \
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pretium a ligula at vestibulum. Curabitur laoreet sed lectus accumsan tincidunt. \
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pretium a ligula at vestibulum. Curabitur laoreet sed lectus accumsan tincidunt.';    
-    
-    const medString = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pretium a ligula at vestibulum. Curabitur laoreet sed lectus accumsan tincidunt. \
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pretium a ligula at vestibulum. Curabitur laoreet sed lectus accumsan tincidunt.';
-    
-    const shortString = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pretium a ligula at vestibulum. Curabitur laoreet sed lectus accumsan tincidunt.';
-    
-    const blogPosts = [
-        { id: 1, href: '/shop', image: '/flowers.jpg', title: 'Blog Post 1', date: '01/22/2026', body: medString},
-        { id: 2, href: '/shop', image: '/flowers.jpg', title: 'Blog Post 2', date: '02/04/2026', body: shortString},
-        { id: 3, href: '/shop', image: '/flowers.jpg', title: 'Blog Post 3', date: '02/15/2026', body: medString},
-        { id: 4, href: '/shop', image: '/flowers.jpg', title: 'Blog Post 4', date: '02/26/2026', body: fillerString}
-    ]
-
-    // Current index of blog post being displayed
-    const [blogIndex, setBlogIndex] = useState(0);
-
-    function handleBlogLeft(){
-        const nextIndex = blogIndex-1;
+    const handleBlogLeft = () => {
+        const nextIndex = postIndex-1;
         if (nextIndex < 0){
-            setBlogIndex(blogPosts.length-1);
+            setPostIndex(posts.length-1);
         }
         else {
-            setBlogIndex(nextIndex);
+            setPostIndex(nextIndex);
         }
     }
 
-    function handleBlogRight(){
-        const nextIndex = (blogIndex+1)%blogPosts.length;
-        setBlogIndex(nextIndex);
+    const handleBlogRight = () => {
+        const nextIndex = (postIndex+1)%posts.length;
+        setPostIndex(nextIndex);
     }
 
+    const fetchPosts = async () => {
+        const { data, error } = await supabase
+        .from("blog_posts")
+        .select("*")
+        .eq("published", true)
+        .order("created_at", { ascending: false });
+
+        if (!error) setPosts(data || []);
+        setLoading(false);
+    }
+
+    useEffect(() => {
+        fetchPosts();
+    }, []);
+    
   return (
     <main>
         {/* Home banner */}
-        <div className="relative flex items-center h-[35vh]">
+        <div className="relative flex items-center h-[45vh]">
             <div className="z-1">
                 <Image src={bannerSrc} alt="image of seedlings" fill style={{objectFit: 'cover'}} />
             </div>
@@ -74,6 +85,7 @@ export default function Home() {
                 </div>
             </div>
         </div>
+
 
         {/* Info Section */}
         <div className="flex flex-col py-12 gap-8 items-center text-2xl ">
@@ -90,31 +102,78 @@ export default function Home() {
         <hr className="border-0 h-[3px] bg-gradient-to-r from-transparent via-(--footer) to-transparent" />
         
         {/* Blog-post style updates */}
-        <div className="max-w-6xl mx-auto text-center mt-8 mb-12">
+        <div className="flex flex-col items-center max-w-6xl mx-auto text-center mt-8 mb-12">
             <h2 className="text-3xl mb-8 font-medium">What's New at the Garden?</h2>
-            <div className="flex mx-[3vw] items-center gap-2">
+            <div className="flex w-6xl items-center">
                 <button onClick={handleBlogLeft} className="cursor-pointer hover:scale-115">
-                    <ChevronLeft size={60} color="var(--input-border)" />
+                    {posts.length > 1 && (
+                        <ChevronLeft size={60} color="var(--input-border)" />
+                    )}
                 </button>
-                <div className="flex h-64 shadow-lg shadow-(--rust) border border-(--footer) rounded-xl p-8 text-left gap-6">
-                    <div className="relative w-1/4 h-auto">
-                        <Image src={blogPosts[blogIndex].image} alt="garden photo" fill className="object-cover rounded-sm"></Image>
+                <div className="w-full">
+                {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 size={28} className="animate-spin text-[var(--teal)]" />
                     </div>
-                    <div className="flex flex-col w-3/4">
-                        <div className="flex justify-between">
-                            <h3 className="text-2xl font-medium">{blogPosts[blogIndex].title}</h3>
-                            <p className="text-(--input-border)">{blogIndex+1} / {blogPosts.length}</p>
+                ) : posts.length === 0 ? (
+                    <div className="text-sm text-[var(--input-border)] text-center">
+                        <p className="pb-2">
+                            There are no posts at the moment.
+                        </p>
+                        <p>
+                            Check back soon to see updates on what we're growing and get the scoop on new deals!
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex h-64 shadow-lg shadow-(--rust) border border-(--footer) rounded-xl p-8 text-left gap-6">
+                        <div className="relative w-1/4 h-auto">
+                            {posts[postIndex].image_url ? (
+                                <Image 
+                                    src={posts[postIndex].image_url} 
+                                    alt={posts[postIndex].title}
+                                    fill 
+                                    className="object-cover rounded-sm"
+                                    placeholder="blur"
+                                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjRDZDRkNDIi8+PC9zdmc+"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                    <Image
+                                        src="/no_item.svg"
+                                        alt="No Item"
+                                        fill
+                                        className="object-cover opacity-40"
+                                    />
+                                </div>
+                            )}
                         </div>
-                        <p className="mb-6">posted {blogPosts[blogIndex].date}</p>
-                        <p className="mb-6 line-clamp-2">{blogPosts[blogIndex].body}</p>
-                        <Link href={blogPosts[blogIndex].href} className="flex items-center gap-2 text-(--rust)">
-                            Read More 
-                            <MoveRight size={20} color="var(--rust)" />
-                        </Link>
+                        <div className="flex flex-col w-3/4">
+                            <div className="flex justify-between">
+                                <h3 className="text-2xl font-medium">{posts[postIndex].title}</h3>
+                                <p className="text-(--input-border)">{postIndex+1} / {posts.length}</p>
+                            </div>
+                            <p className="mb-6">posted {formatDate(posts[postIndex].created_at)}</p>
+                            <p className="mb-6 line-clamp-2">{posts[postIndex].excerpt}</p>
+                            <button 
+                                onClick={() =>
+                                    router.push(`/blog/${posts[postIndex].id}?${new URLSearchParams(window.location.search)}`)                                    
+                                }
+                                className="flex items-center gap-2 text-(--rust) cursor-pointer"
+                            >
+                                Read More 
+                                <MoveRight size={20} color="var(--rust)" />
+                            </button>
+                        </div>
                     </div>
+                )}
                 </div>
-                <button onClick={handleBlogRight} className="cursor-pointer hover:scale-115">
-                    <ChevronRight size={60} color="var(--input-border)" />
+                <button 
+                    onClick={handleBlogRight} 
+                    className="cursor-pointer hover:scale-115"
+                >
+                    {posts.length > 1 && (
+                        <ChevronRight size={60} color="var(--input-border)" />
+                    )}
                 </button>
             </div>
         </div>

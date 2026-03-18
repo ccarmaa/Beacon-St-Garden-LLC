@@ -1,4 +1,4 @@
-export default function BlogTab() {
+
   /**
    * schema: blog_posts
    * columns:
@@ -58,6 +58,663 @@ export default function BlogTab() {
    * The blog version is identical, just swap product-images for blog-images.
    *
    */
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { createClient } from "@/lib/supabase/client";
+import {
+  Ban,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  Upload, 
+  X,
+} from 'lucide-react';
+import MarkdownRenderer from '../MarkdownRenderer';
 
-  return <p>Blog tab.</p>;
+const styles = {
+  labelClass: "block text-xs uppercase tracking-widest text-[var(--input-border)] mb-1",
+  inputClass: "w-full px-3 py-2 bg-[var(--header)] border border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--teal)] text-sm text-[var(--text)]",
+  sectionClass: "border-t border-[var(--card-border)] pt-6 mt-6",
+};
+
+function formatDateTime(dateStr: string | null) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+const emptyForm = {
+  title: "",
+  excerpt: "",
+  content: "",
+  image_url: "",
+  published: true,
+};
+
+function AddPostModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const supabase = createClient();
+  const [form, setForm] = useState(emptyForm);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  const set = (field: string, value: any) =>
+    setForm((prev) => ({ ...prev, [field]: value }));
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.title) {
+      setError("Title is required.");
+      return;
+    }
+    setUploading(true);
+    setError("");
+
+    let image_url = form.image_url;
+
+    if (imageFile) {
+      const ext = imageFile.name.split(".").pop();
+      const filename = `${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("blog-images")
+        .upload(filename, imageFile);
+
+      if (uploadError) {
+        setError("Image upload failed: " + uploadError.message);
+        setUploading(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("blog-images")
+        .getPublicUrl(filename);
+
+      image_url = urlData.publicUrl;
+    }
+
+    const { error: insertError } = await supabase.from("blog_posts").insert({
+      title: form.title,
+      excerpt: form.excerpt || null,
+      content: form.content || null,
+      image_url: image_url || null,
+      published: form.published,
+    });
+
+    if (insertError) {
+      setError("Failed to add blog post: " + insertError.message);
+    } else {
+      onSuccess();
+      onClose();
+    }
+
+    setUploading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="relative bg-[var(--header)] rounded-lg shadow-xl border border-[var(--card-border)] w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-[var(--header)] border-b border-[var(--card-border)] px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-lg font-semibold text-[var(--text)]">
+            Create New Blog Post
+          </h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--card-bg)] hover:bg-[var(--card-border)] transition-colors text-[var(--text)]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-6">
+          {/* Thumbnail */}
+          <div className="mb-6">
+            <label className={styles.labelClass}>Thumbnail Image</label>
+            <div className="flex items-start gap-4">
+              {imagePreview ? (
+                <div className="relative w-28 h-28 rounded-md overflow-hidden border border-[var(--card-border)] flex-shrink-0">
+                  <Image
+                    src={imagePreview}
+                    alt="Preview"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-28 h-28 rounded-md border border-dashed border-[var(--input-border)] flex items-center justify-center flex-shrink-0 bg-[var(--card-bg)]">
+                  <Upload size={20} className="text-[var(--input-border)]" />
+                </div>
+              )}
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="text-sm text-[var(--text)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-[var(--teal)] file:text-white hover:file:bg-[var(--teal-hover)] file:cursor-pointer cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* title */}
+            <div>
+              <label className={styles.labelClass}>
+                Title <span className="text-[var(--rust)]">*</span>
+              </label>
+              <input 
+                type="text"
+                value={form.title}
+                onChange={(e) => set("title", e.target.value)}
+                className={styles.inputClass}
+                placeholder="Title of post"
+              />
+            </div>
+
+            {/* excerpt */}
+            <div>
+              <label className={styles.labelClass}>
+                Excerpt
+              </label>
+              <textarea
+                value={form.excerpt}
+                onChange={(e) => set("excerpt", e.target.value)}
+                rows={2}
+                className={`${styles.inputClass} resize-none`}
+                placeholder="Preview to be displayed on home page..."
+              />
+            </div>
+
+            {/* content */}
+            <div>
+              <label className={styles.labelClass}>
+                Content
+              </label>
+              <textarea
+                value={form.content}
+                onChange={(e) => set("content", e.target.value)}
+                rows={4}
+                className={`${styles.inputClass}`}
+                placeholder="Post in markdown..."
+              />
+            </div>
+
+            {/* published */}
+            <div>
+              <label className={styles.labelClass}>Make visible on home page</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="checkbox"
+                  checked={form.published}
+                  onChange={(e) => set("published", e.target.checked)}
+                  className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                />
+                <span className="text-sm text-[var(--text)]">
+                  Publish Blog Post
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.sectionClass}>
+              {error && (
+                <p className="text-sm text-[var(--rust)] mb-3">{error}</p>
+              )}
+              <button
+                onClick={handleSubmit}
+                disabled={uploading}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-md font-medium text-sm transition-colors ${
+                  uploading
+                    ? "bg-[var(--disabled-bg)] text-[var(--disabled-text)] cursor-not-allowed"
+                    : "bg-[var(--rust)] hover:bg-[var(--dark-rust)] text-white"
+                }`}
+              >
+                {uploading && <Loader2 size={15} className="animate-spin" />}
+                {uploading ? "Saving..." : "Create Post"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BlogPostRow({
+  post,
+  onDelete,
+  onUpdate,
+}: {
+  post: any;
+  onDelete: () => void;
+  onUpdate: (updated: any) => void;
+}) {
+  const supabase = createClient();
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    title: post.title ?? "",
+    excerpt: post.excerpt ?? "",
+    content: post.content ?? "",
+    image_url: post.image_url ?? "",
+    published: post.published ?? false,
+  });
+
+  const set = (field: string, value: any) =>
+    setForm((prev) => ({ ...prev, [field]: value }));
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    if (!form.title) {
+      setError("Title is required.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+
+    let image_url = form.image_url;
+
+    if (imageFile) {
+      const ext = imageFile.name.split(".").pop();
+      const filename = `${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("blog-images")
+        .upload(filename, imageFile);
+
+      if (uploadError) {
+        setError("Image upload failed: " + uploadError.message);
+        setSaving(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("blog-images")
+        .getPublicUrl(filename);
+
+      image_url = urlData.publicUrl;
+    }
+
+    const updates = {
+      title: form.title,
+      excerpt: form.excerpt || null,
+      content: form.content || null,
+      image_url: image_url || null,
+      published: form.published,
+    };
+
+    const { error: updateError } = await supabase
+      .from("blog_posts")
+      .update(updates)
+      .eq("id", post.id);
+
+    if (updateError) {
+      setError("Failed to save: " + updateError.message);
+    } else {
+      onUpdate({ ...post, ...updates });
+      setEditing(false);
+      setImageFile(null);
+      setImagePreview(null);
+    }
+
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    await supabase.from("blog_posts").delete().eq("id", post.id);
+    onDelete();
+  };
+
+  return (
+    <div className="border border-[var(--card-border)] rounded-lg overflow-hidden">
+      <div
+        className="flex items-center gap-4 p-4 bg-[var(--card-bg)] cursor-pointer hover:bg-[var(--card-border)] transition-colors"
+        onClick={() => {
+          setExpanded((prev) => !prev);
+          setEditing(false);
+        }}
+      >
+        {/* thumbnail */}
+          <div className="relative w-20 h-20 flex-shrink-0 rounded-md overflow-hidden bg-[var(--card-border)]">
+            {post.image_url ? (
+              <Image
+                src={post.image_url}
+                alt={post.title}
+                fill
+                className="object-cover"
+                placeholder="blur"
+                blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjRDZDRkNDIi8+PC9zdmc+"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Image
+                  src="/no_item.svg"
+                  alt="No Item"
+                  width={20}
+                  height={20}
+                  className="opacity-40"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-[var(--text)] text-md truncate">
+              {post.title}
+            </p>
+            <p className="text-sm text-[var(--input-border)]">
+              Created: {formatDateTime(post.created_at)}
+            </p>
+            <p className="text-sm text-[var(--input-border)]">
+              Last Updated: {formatDateTime(post.updated_at)}
+            </p>
+          </div>
+
+          <div className="hidden md:flex flex-shrink-0 text-xs text-[var(--input-border)]">
+          {post.published ? (
+            <span className="flex items-center gap-1">
+              <Eye size={13} /> Published
+            </span>
+          ) : (
+            <span className="flex items-center gap-1">
+              <Ban size={13} /> Unpublished
+            </span>
+          )}
+        </div>
+
+        <div className="flex-shrink-0 text-[var(--input-border)]">
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </div>
+      </div>
+
+      {/* expanded */}
+      {expanded && (
+        <div className="p-5 bg-[var(--header)] border-t border-[var(--card-border)]">
+          {editing ? (
+            // EDIT MODE
+            <div className="space-y-4">
+              {/* Edit Thumbnail */}
+              <div className="mb-6">
+                <label className={styles.labelClass}>Thumbnail Image</label>
+                <div className="flex items-start gap-4">
+                  <div className="relative w-28 h-28 rounded-md overflow-hidden border border-[var(--card-border)] flex-shrink-0 bg-[var(--card-bg)]">
+                    {imagePreview || form.image_url ? (
+                      <Image
+                        src={imagePreview ?? form.image_url}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Upload
+                          size={20}
+                          className="text-[var(--input-border)]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="text-sm text-[var(--text)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-[var(--teal)] file:text-white hover:file:bg-[var(--teal-hover)] file:cursor-pointer cursor-pointer"
+                    />
+                    <p className="text-xs text-[var(--input-border)] mt-1.5">
+                      Upload a new image to replace the current one
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Edit Title */}
+              <div>
+                <label className={styles.labelClass}>Title</label>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => set("title", e.target.value)}
+                  className={styles.inputClass}
+                />
+              </div>
+
+              {/* Edit Excerpt */}
+              <div>
+                <label className={styles.labelClass}>Excerpt</label>
+                <textarea
+                  value={form.excerpt}
+                  onChange={(e) => set("excerpt", e.target.value)}
+                  rows={2}
+                  className={`${styles.inputClass} resize-none`}
+                />
+              </div>
+
+              {/* Edit Content */}
+              <div>
+                <label className={styles.labelClass}>Content</label>
+                <textarea
+                  value={form.content}
+                  onChange={(e) => set("content", e.target.value)}
+                  rows={4}
+                  className={`${styles.inputClass}`}
+                />
+              </div>
+
+              {/* Edit Published */}
+              <div>
+                <label className={styles.labelClass}>Make visible on home page</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="checkbox"
+                    checked={form.published}
+                    onChange={(e) => set("published", e.target.checked)}
+                    className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                  />
+                  <span className="text-sm text-[var(--text)]">
+                    Publish Blog Post
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mt-6 pt-4 border-t border-[var(--card-border)]">
+                {error && (
+                  <p className="text-sm text-[var(--rust)] mr-2">{error}</p>
+                )}
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className={`flex items-center gap-2 px-5 py-2 rounded-md font-medium text-sm transition-colors ${
+                    saving
+                      ? "bg-[var(--disabled-bg)] text-[var(--disabled-text)] cursor-not-allowed"
+                      : "bg-[var(--teal)] hover:bg-[var(--teal-hover)] text-white"
+                  }`}
+                >
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditing(false);
+                    setError("");
+                    setImageFile(null);
+                    setImagePreview(null);
+                  }}
+                  className="px-5 py-2 rounded-md font-medium text-sm border border-[var(--card-border)] text-[var(--text)] hover:bg-[var(--card-bg)] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            // VIEW ONLY
+          <div>
+            <div className="flex justify-end items-center py-2 gap-4">
+              <button
+                onClick={() => setEditing(true)}
+                className="flex items-center gap-2 text-sm text-[var(--input-border)] hover:text-[var(--teal)] transition-colors"
+              >
+                <Pencil size={14} />
+                Edit Post
+              </button>
+
+              <span className="text-[var(--card-border)]">|</span>
+
+              {!confirmDelete ? (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-2 text-sm text-[var(--input-border)] hover:text-[var(--rust)] transition-colors"
+                >
+                  <Trash2 size={14} />
+                  Delete Product
+                </button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-[var(--text)]">Are you sure?</p>
+                  <button
+                    onClick={handleDelete}
+                    className="px-3 py-1.5 bg-[var(--rust)] hover:bg-[var(--dark-rust)] text-white text-sm rounded-md transition-colors"
+                  >
+                    Yes, Delete
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-3 py-1.5 bg-[var(--card-bg)] hover:bg-[var(--card-border)] text-[var(--text)] text-sm rounded-md transition-colors border border-[var(--card-border)]"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-baseline justify-between py-2 mb-2 border-y border-dashed border-[var(--card-border)]">
+              <span className="text-xs uppercase tracking-widest text-[var(--input-border)] flex-shrink-0 mr-4">
+                Excerpt
+              </span>
+              <span className="text-sm text-[var(--text)] text-right">
+                {post.excerpt}
+              </span>
+            </div>
+
+            <div>
+              <p className="text-xs uppercase tracking-widest text-[var(--input-border)] flex-shrink-0 mr-4 pb-2">
+                Preview 
+              </p>
+              <div className="bg-white/40">
+                <MarkdownRenderer md={post.content}/>
+              </div>
+            </div>
+          </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function BlogTab() {
+  const supabase = createClient();
+  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<any[]>([]);
+
+  const fetchPosts = async () => {
+    const { data, error } = await supabase
+      .from("blog_posts")
+      .select("*")
+      .order("published", {ascending: false})
+      .order("created_at", { ascending: false });
+
+    if (!error) setPosts(data || []);
+    setLoading(false);
+  }
+
+  const handleUpdate = (updated: any) => {
+    setPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  return (
+    <div>
+
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-[var(--text)]">
+          Blog Posts{" "}
+          <span className="text-sm font-normal text-[var(--input-border)] ml-1">
+            {posts.length} posts
+          </span>
+        </h2>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 bg-[var(--rust)] hover:bg-[var(--dark-rust)] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+        >
+          <Plus size={15} />
+          Create New Post
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 size={28} className="animate-spin text-[var(--teal)]" />
+        </div>
+      ) : posts.length === 0 ? (
+        <p className="text-sm text-[var(--input-border)] text-center py-12">
+          No posts yet.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {posts
+            .map((post) => (
+              <BlogPostRow
+                key={post.id}
+                post={post}
+                onDelete={fetchPosts}
+                onUpdate={handleUpdate}
+              />
+            ))}
+        </div>
+      )}
+
+      {showModal && (
+        <AddPostModal
+          onClose={() => setShowModal(false)}
+          onSuccess={fetchPosts}
+        />
+      )}
+    </div>
+  );
 }
