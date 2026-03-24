@@ -520,18 +520,18 @@ function ReservationRow({
             <div className="space-y-2">
               {items.map((item) => (
                 <div key={item.id} className="flex items-center gap-3">
-                  {reservation.status !== "completed" && (
+                  
                     <button
                       onClick={() => handleRemoveItem(item.id)}
                       className="text-[var(--input-border)] hover:text-[var(--rust)] transition-colors flex-shrink-0"
                     >
                       <X size={14} />
                     </button>
-                  )}
+                  
                   <span className="flex-1 text-sm text-[var(--text)]">
                     {item.product_name}
                   </span>
-                  {reservation.status !== "completed" ? (
+                  
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() =>
@@ -553,11 +553,7 @@ function ReservationRow({
                         +
                       </button>
                     </div>
-                  ) : (
-                    <span className="text-sm text-[var(--input-border)]">
-                      ×{item.quantity}
-                    </span>
-                  )}
+                
                   <span className="text-sm text-[var(--text)] w-16 text-right flex-shrink-0">
                     ${(item.price * item.quantity).toFixed(2)}
                   </span>
@@ -566,7 +562,7 @@ function ReservationRow({
             </div>
 
             {/* add item */}
-            {reservation.status !== "completed" && (
+            
               <div>
                 {!showAddItem ? (
                   <button
@@ -594,7 +590,7 @@ function ReservationRow({
                   </div>
                 )}
               </div>
-            )}
+            
 
             {/* total */}
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--card-border)]">
@@ -602,7 +598,7 @@ function ReservationRow({
                 Total
               </span>
               <div className="flex items-center gap-2">
-                {reservation.status !== "completed" ? (
+                
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-[var(--input-border)]">
                       $
@@ -626,11 +622,7 @@ function ReservationRow({
                       Reset
                     </button>
                   </div>
-                ) : (
-                  <span className="text-sm font-medium text-[var(--text)]">
-                    ${(parseFloat(finalCost) || calculatedTotal).toFixed(2)}
-                  </span>
-                )}
+                
               </div>
             </div>
             <div className="mt-5 pt-4 border-t border-[var(--card-border)]">
@@ -663,7 +655,7 @@ function ReservationRow({
           </div>
 
           {/* pickup time */}
-          {reservation.status !== "completed" && (
+          
             <div className="mb-5">
               <label className={labelClass}>Proposed Pickup Time</label>
               <div className="flex gap-2 items-center flex-wrap">
@@ -695,19 +687,9 @@ function ReservationRow({
                 <p className="mt-1.5 text-xs text-[var(--input-border)]">{pickupTime}</p>
               )}
             </div>
-          )}
+          
 
-          {reservation.status === "completed" &&
-            reservation.proposed_pickup && (
-              <div className="mb-5">
-                <p className="text-xs uppercase tracking-widest text-[var(--input-border)] mb-1">
-                  Pickup Time
-                </p>
-                <p className="text-sm text-[var(--text)]">
-                  {reservation.proposed_pickup}
-                </p>
-              </div>
-            )}
+          
 
           {/* error */}
           {error && <p className="text-sm text-[var(--rust)] mb-3">{error}</p>}
@@ -755,6 +737,20 @@ function ReservationRow({
                 {saving ? "Completing..." : "Mark as Completed"}
               </button>
             </div>
+          )}
+          {reservation.status === "completed" && (
+            <button
+              onClick={handleSaveConfirmed}
+              disabled={saving}
+              className={`flex items-center gap-2 px-5 py-2 rounded-md text-sm font-medium transition-colors ${
+                saving
+                  ? "bg-[var(--disabled-bg)] text-[var(--disabled-text)] cursor-not-allowed"
+                  : "bg-[var(--teal)] hover:bg-[var(--teal-hover)] text-white"
+              }`}
+            >
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
           )}
         </div>
       )}
