@@ -26,6 +26,7 @@ export default function ContactPage() {
   const [errMessage, setErrMessage] = useState("");
   const [err, setErr] = useState(false);
   const [submitted, setSubmittted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const emailRegex =
     /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
 
@@ -33,23 +34,36 @@ export default function ContactPage() {
      - use Web3Forms to send email?
      - loading icon during api calls
   */
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (
-      userName.length === 0 ||
-      userEmail.length === 0 ||
-      userMessage.length === 0
-    ) {
-      // setSubmittted(false);
+    if (userName.length === 0 || userEmail.length === 0 || userMessage.length === 0) {
       setErrMessage("Please fill out all fields");
       setErr(true);
-    } else if (!emailRegex.test(userEmail)) {
+      return;
+    }
+    if (!emailRegex.test(userEmail)) {
       setErrMessage("Please enter a valid email address");
       setErr(true);
-    } else {
-      setErr(false);
+      return;
+    }
+
+    setErr(false);
+    setLoading(true);
+
+    const res = await fetch('/api/send-contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: userName, email: userEmail, message: userMessage }),
+    });
+
+    setLoading(false);
+
+    if (res.ok) {
       event.target.reset();
       setSubmittted(true);
+    } else {
+      setErrMessage("Something went wrong. Please try again.");
+      setErr(true);
     }
   };
 
@@ -89,7 +103,7 @@ export default function ContactPage() {
     <div className="bg-(--header)">
       <h1 className="text-3xl font-medium text-center my-6">Contact</h1>
       <hr className="border-0 h-[2px] bg-gradient-to-r from-transparent via-(--card-border) to-transparent" />
-      <div className="relative flex flex-col md:flex-row max-w-5xl mx-auto my-8 gap-8 md:gap-0">
+      <div className="relative flex flex-col-reverse md:flex-row max-w-5xl mx-auto my-8 gap-8 md:gap-0">
         {/* Contact form */}
         <div className="relative w-auto md:w-1/2 mx-6">
           <form
@@ -142,9 +156,10 @@ export default function ContactPage() {
 
             <button
               type="submit"
-              className="w-full bg-(--rust) text-white py-2 rounded-md hover:bg-(--dark-rust) transition"
+              disabled={loading}
+              className="w-full bg-(--rust) text-white py-2 rounded-md hover:bg-(--dark-rust) transition disabled:opacity-60"
             >
-              Send Message
+               {loading ? "Sending..." : "Send Message"}
             </button>
           </form>
         </div>
@@ -157,9 +172,7 @@ export default function ContactPage() {
             <DecLine />
           </span>
           <a
-            href="https://www.instagram.com/crfrencho/"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="mailto:beaconstgardens@gmail.com"
             className="hover:text-[var(--rust)] transition-colors flex items-center mb-8"
           >
             <span>beaconstgardens@gmail.com</span>
