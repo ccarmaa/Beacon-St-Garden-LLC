@@ -50,7 +50,24 @@ export default function ShopPage() {
   };
   const setSearchQuery = (q: string) => updateParams({ search: q });
   const setSortBy = (s: string) => updateParams({ sort: s });
+  const selectedSun = searchParams.getAll('sun');
+  const [sunOpen, setSunOpen] = useState(false);
+  const toggleSun = (sun: string) => {
+  const next = selectedSun.includes(sun)
+      ? selectedSun.filter(s => s !== sun)
+      : [...selectedSun, sun];
+    updateParams({ sun: next });
+  };
 
+  const SUN_FILTER_GROUPS: Record<string, string[]> = {
+    "Full Sun":                    ["Full Sun", "Part Sun"],
+    "Part Sun":                    ["Part Sun", "Full Sun", "Part-Shade"],
+    "Part-Shade":                  ["Part-Shade", "Part-Shade to Full-Shade", "Full-Shade to Part-Shade", "Part Sun"],
+    "Part-Shade to Full-Shade":    ["Part-Shade to Full-Shade", "Part-Shade", "Shade", "Full-Shade to Part-Shade"],
+    "Full-Shade to Part-Shade":    ["Full-Shade to Part-Shade", "Part-Shade", "Shade", "Part-Shade to Full-Shade"],
+    "Shade":                       ["Shade", "Dapple Shade", "Part-Shade to Full-Shade", "Full-Shade to Part-Shade"],
+    "Dapple Shade":                ["Dapple Shade", "Shade", "Part-Shade"],
+  };
   // filter & sort products
   const filteredProducts = useMemo(() => {
     if (allProducts.length === 0) return [];
@@ -63,6 +80,13 @@ export default function ShopPage() {
           ? p.category.some((c: string) => selectedCategories.includes(c))
           : selectedCategories.includes(p.category)
       );
+    }
+
+    if (selectedSun.length > 0) {
+      const expandedSun = new Set(
+        selectedSun.flatMap(s => SUN_FILTER_GROUPS[s] ?? [s])
+      );
+      filtered = filtered.filter(p => p.sun && expandedSun.has(p.sun));
     }
 
     // apply availability filter
@@ -104,6 +128,7 @@ export default function ShopPage() {
   }, [
     allProducts,
     selectedCategories,
+    selectedSun,
     selectedAvailability,
     searchQuery,
     sortBy,
@@ -212,10 +237,41 @@ export default function ShopPage() {
                   ))}
                 </div>
               </div>
+              {/*sun*/}
+              <div className="mb-3 md:mb-5">
+                <button
+                  type="button"
+                  onClick={() => setSunOpen(prev => !prev)}
+                  className="flex items-center justify-between w-full font-medium text-[var(--text)] mb-1.5 text-xs md:text-sm"
+                >
+                  <span>Sun</span>
+                  <span className="w-5 h-5 flex items-center justify-center rounded-full bg-[var(--card-border)] hover:bg-[var(--button-gray)] transition-colors text-[var(--text)]">
+                    {sunOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  </span>
+                </button>
+                {sunOpen && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
+                    {Object.keys(SUN_FILTER_GROUPS).map((sun) => (
+                      <label
+                        key={sun}
+                        className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                          checked={selectedSun.includes(sun)}
+                          onChange={() => toggleSun(sun)}
+                        />
+                        <span className="text-sm">{sun}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/*availability*/}
               <div className="mb-5">
-                <h4 className="font-medium text-[var(--text)] mb-2 text-sm">
+                <h4 className="font-medium text-[var(--text)] mb-1.5 text-xs md:text-sm">
                   Availability
                 </h4>
                 <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
