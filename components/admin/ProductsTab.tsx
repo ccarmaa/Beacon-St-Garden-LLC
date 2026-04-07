@@ -30,6 +30,8 @@ const SOIL_OPTIONS = [
 const SUN_OPTIONS = [
   "Full Sun",
   "Part-Shade",
+  "Part-Shade to Full-Shade",
+  "Full-Shade to Part-Shade",
   "Shade",
   "Dapple Shade",
   "Part Sun",

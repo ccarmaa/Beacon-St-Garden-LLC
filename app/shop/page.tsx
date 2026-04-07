@@ -50,7 +50,54 @@ export default function ShopPage() {
   };
   const setSearchQuery = (q: string) => updateParams({ search: q });
   const setSortBy = (s: string) => updateParams({ sort: s });
+  const selectedSun = searchParams.getAll('sun');
+  const categoryOpen = searchParams.get('catOpen') !== 'false';
+  const sunOpen = searchParams.get('sunOpen') === 'true';
+  const availabilityOpen = searchParams.get('availOpen') === 'true';
+  const lightOpen = searchParams.get('lightOpen') === 'true';
+  const soilOpen = searchParams.get('soilOpen') === 'true';
+  const lifeSpanOpen = searchParams.get('lifeSpanOpen') === 'true';
 
+  const setCategoryOpen = (val: boolean) => updateParams({ catOpen: val ? 'true' : 'false' });
+  const setSunOpen = (val: boolean) => updateParams({ sunOpen: val ? 'true' : 'false' });
+  const setAvailabilityOpen = (val: boolean) => updateParams({ availOpen: val ? 'true' : 'false' });
+  const setLightOpen = (val: boolean) => updateParams({ lightOpen: val ? 'true' : 'false' });
+  const setSoilOpen = (val: boolean) => updateParams({ soilOpen: val ? 'true' : 'false' });
+  const setLifeSpanOpen = (val: boolean) => updateParams({ lifeSpanOpen: val ? 'true' : 'false' });
+
+  const selectedLight = searchParams.getAll('light');
+  const selectedSoil = searchParams.getAll('soil');
+  const selectedLifeSpan = searchParams.getAll('lifeSpan');
+
+  const toggleLight = (val: string) => {
+    const next = selectedLight.includes(val) ? selectedLight.filter(l => l !== val) : [...selectedLight, val];
+    updateParams({ light: next });
+  };
+  const toggleSoil = (val: string) => {
+    const next = selectedSoil.includes(val) ? selectedSoil.filter(s => s !== val) : [...selectedSoil, val];
+    updateParams({ soil: next });
+  };
+  const toggleLifeSpan = (val: string) => {
+    const next = selectedLifeSpan.includes(val) ? selectedLifeSpan.filter(l => l !== val) : [...selectedLifeSpan, val];
+    updateParams({ lifeSpan: next });
+  };
+
+  const toggleSun = (sun: string) => {
+  const next = selectedSun.includes(sun)
+      ? selectedSun.filter(s => s !== sun)
+      : [...selectedSun, sun];
+    updateParams({ sun: next });
+  };
+
+  const SUN_FILTER_GROUPS: Record<string, string[]> = {
+    "Full Sun":                    ["Full Sun", "Part Sun"],
+    "Part Sun":                    ["Part Sun", "Full Sun", "Part-Shade"],
+    "Part-Shade":                  ["Part-Shade", "Part-Shade to Full-Shade", "Full-Shade to Part-Shade", "Part Sun"],
+    "Part-Shade to Full-Shade":    ["Part-Shade to Full-Shade", "Part-Shade", "Shade", "Full-Shade to Part-Shade"],
+    "Full-Shade to Part-Shade":    ["Full-Shade to Part-Shade", "Part-Shade", "Shade", "Part-Shade to Full-Shade"],
+    "Shade":                       ["Shade", "Dapple Shade", "Part-Shade to Full-Shade", "Full-Shade to Part-Shade"],
+    "Dapple Shade":                ["Dapple Shade", "Shade", "Part-Shade"],
+  };
   // filter & sort products
   const filteredProducts = useMemo(() => {
     if (allProducts.length === 0) return [];
@@ -65,11 +112,30 @@ export default function ShopPage() {
       );
     }
 
+    if (selectedSun.length > 0) {
+      const expandedSun = new Set(
+        selectedSun.flatMap(s => SUN_FILTER_GROUPS[s] ?? [s])
+      );
+      filtered = filtered.filter(p => p.sun && expandedSun.has(p.sun));
+    }
+
     // apply availability filter
     if (selectedAvailability.length > 0) {
       filtered = filtered.filter((p) =>
         selectedAvailability.includes(p.availability),
       );
+    }
+
+    if (selectedLight.length > 0) {
+      filtered = filtered.filter(p => selectedLight.includes(p.light));
+    }
+    if (selectedSoil.length > 0) {
+      filtered = filtered.filter(p =>
+        Array.isArray(p.soil) ? p.soil.some((s: string) => selectedSoil.includes(s)) : selectedSoil.includes(p.soil)
+      );
+    }
+    if (selectedLifeSpan.length > 0) {
+      filtered = filtered.filter(p => selectedLifeSpan.includes(p.life_span));
     }
 
     // apply search
@@ -104,6 +170,10 @@ export default function ShopPage() {
   }, [
     allProducts,
     selectedCategories,
+    selectedSun,
+    selectedLight,
+    selectedSoil,
+    selectedLifeSpan,
     selectedAvailability,
     searchQuery,
     sortBy,
@@ -170,7 +240,7 @@ export default function ShopPage() {
             {/* mobile toggle */}
             <button
               className="flex md:hidden items-center gap-2 mb-2 text-sm font-medium text-[var(--text)] border border-[var(--card-border)] px-3 py-1.5 rounded-md bg-[var(--card-bg)]"
-              onClick={() => setFiltersOpen(prev => !prev)}
+              onClick={() => setFiltersOpen(!filtersOpen)}
             >
               <SlidersHorizontal size={14} />
               {filtersOpen ? 'Hide Filters' : 'Filters'}
@@ -183,9 +253,15 @@ export default function ShopPage() {
 
               {/*category*/}
               <div className="mb-3 md:mb-5">
-                <h4 className="font-medium text-[var(--text)] mb-1.5 text-xs md:text-sm">
-                  Category
-                </h4>
+                <button
+                  type="button"
+                  onClick={() => setCategoryOpen(!categoryOpen)}
+                  className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
+                >
+                  <span>Category</span>
+                  {categoryOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
+                {categoryOpen && (
                 <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
                   {/*TO ADD MORE CATEGORIES, ADD TO LIST BELOW*/}
                   {[
@@ -210,14 +286,116 @@ export default function ShopPage() {
                       <span className="text-sm">{category}</span>
                     </label>
                   ))}
-                </div>
+                </div>)}
+              </div>
+              {/*sun*/}
+              <div className="mb-3 md:mb-5">
+                <button
+                  type="button"
+                  onClick={() => setSunOpen(!sunOpen)}
+                  className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
+                >
+                  <span>Sun</span>
+                  {sunOpen ? <ChevronUp size={11} className="group-hover:text-[var(--rust)] transition-colors" /> : <ChevronDown size={11} className="group-hover:text-[var(--rust)] transition-colors" />}
+                </button>
+                {sunOpen && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
+                    {Object.keys(SUN_FILTER_GROUPS).map((sun) => (
+                      <label
+                        key={sun}
+                        className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                          checked={selectedSun.includes(sun)}
+                          onChange={() => toggleSun(sun)}
+                        />
+                        <span className="text-sm">{sun}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/*light*/}
+              <div className="mb-3 md:mb-5">
+                <button
+                  type="button"
+                  onClick={() => setLightOpen(!lightOpen)}
+
+                  className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
+                >
+                  <span>Light</span>
+                  {lightOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
+                {lightOpen && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
+                    {["Bright Direct", "Bright Indirect", "Medium", "Low"].map((val) => (
+                      <label key={val} className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors">
+                        <input type="checkbox" className="w-4 h-4 accent-[var(--teal)] cursor-pointer" checked={selectedLight.includes(val)} onChange={() => toggleLight(val)} />
+                        <span className="text-sm">{val}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/*soil*/}
+              <div className="mb-3 md:mb-5">
+                <button
+                  type="button"
+                  onClick={() => setSoilOpen(!soilOpen)}
+                  className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
+                >
+                  <span>Soil</span>
+                  {soilOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
+                {soilOpen && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
+                    {["rich", "well-drained", "moist", "high in organic matter", "wet", "nutrient-poor", "sandy or gravely", "loose", "fertile"].map((val) => (
+                      <label key={val} className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors">
+                        <input type="checkbox" className="w-4 h-4 accent-[var(--teal)] cursor-pointer" checked={selectedSoil.includes(val)} onChange={() => toggleSoil(val)} />
+                        <span className="text-sm">{val}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/*life span*/}
+              <div className="mb-3 md:mb-5">
+                <button
+                  type="button"
+                  onClick={() => setLifeSpanOpen(!lifeSpanOpen)}
+                  className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
+                >
+                  <span>Life Span</span>
+                  {lifeSpanOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
+                {lifeSpanOpen && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
+                    {["Annual", "Perennial"].map((val) => (
+                      <label key={val} className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors">
+                        <input type="checkbox" className="w-4 h-4 accent-[var(--teal)] cursor-pointer" checked={selectedLifeSpan.includes(val)} onChange={() => toggleLifeSpan(val)} />
+                        <span className="text-sm">{val}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/*availability*/}
               <div className="mb-5">
-                <h4 className="font-medium text-[var(--text)] mb-2 text-sm">
-                  Availability
-                </h4>
+                <button
+                  type="button"
+                  onClick={() => setAvailabilityOpen(!availabilityOpen)}
+                  className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
+                >
+                  <span>Availability</span>
+                  {availabilityOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
+                {availabilityOpen && (
                 <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
                   {/*TO ADD DIFFERENT AVAILABILITY, ADD TO LIST BELOW*/}
                   {["Ready Now", "Coming Soon"].map((availability) => (
@@ -234,7 +412,7 @@ export default function ShopPage() {
                       <span className="text-sm">{availability}</span>
                     </label>
                   ))}
-                </div>
+                </div>)}
               </div>
 
               {/*clears all filters*/}
