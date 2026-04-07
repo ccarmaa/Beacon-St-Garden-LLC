@@ -16,6 +16,8 @@ function ProductPageContent() {
 
   const [showSun, setShowSun] = useState(false);
   const [showLight, setShowLight] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
+
 
   const { items, addItem, updateQuantity } = useCartStore();
   const cartItem = items.find((i) => i.id === id);
@@ -101,27 +103,51 @@ function ProductPageContent() {
         {/* top section */}
         <div className="flex flex-col sm:flex-row gap-8 sm:gap-10 items-start mb-12">
           {/* image */}
-          <div className="relative w-3/4 mx-auto sm:mx-0 sm:w-1/2 flex-shrink-0 aspect-square rounded-sm overflow-hidden bg-[var(--card-border)]">
-            {product.image_url ? (
-              <Image
-                src={product.image_url}
-                alt={product.name}
-                fill
-                className="object-cover"
-                placeholder="blur"
-                blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjRDZDRkNDIi8+PC9zdmc+"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Image
-                  src="/no-image.png"
-                  alt="No Item"
-                  width={100}
-                  height={100}
-                  className="opacity-40"
-                />
-              </div>
-            )}
+          <div className="w-3/4 mx-auto sm:mx-0 sm:w-1/2 flex-shrink-0">
+            {(() => {
+              const urls = Array.isArray(product.image_urls) && product.image_urls.length > 0
+                ? product.image_urls
+                : product.image_url ? [product.image_url] : [];
+              const src = urls[activeImage] ?? null;
+              return (
+                <>
+                  <div className="relative aspect-square rounded-sm overflow-hidden bg-[var(--card-border)] mb-3">
+                    {src ? (
+                      <Image
+                        src={src}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                        placeholder="blur"
+                        blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjRDZDRkNDIi8+PC9zdmc+"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Image src="/no-image.png" alt="No Item" width={100} height={100} className="opacity-40" />
+                      </div>
+                    )}
+                  </div>
+                  {urls.length > 1 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {urls.map((url, i) => (
+                        <button
+                          key={url}
+                          type="button"
+                          onClick={() => setActiveImage(i)}
+                          className={`relative w-14 h-14 rounded-sm overflow-hidden border-2 transition-colors flex-shrink-0 ${
+                            activeImage === i
+                              ? "border-[var(--teal)]"
+                              : "border-transparent hover:border-[var(--input-border)]"
+                          }`}
+                        >
+                          <Image src={url} alt={`View ${i + 1}`} fill className="object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* right side */}
