@@ -13,6 +13,8 @@ import {
   Pencil,
   Eye,
   Ban,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -74,6 +76,119 @@ const labelClass =
 const inputClass =
   "w-full px-3 py-2 bg-[var(--header)] border border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--teal)] text-sm text-[var(--text)]";
 const sectionClass = "border-t border-[var(--card-border)] pt-6 mt-6";
+function ImageManager({
+  
+  imageFiles,
+  setImageFiles,
+  existingUrls,
+  setExistingUrls,
+}: {
+  imageFiles: File[];
+  setImageFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  existingUrls: string[];
+  setExistingUrls: React.Dispatch<React.SetStateAction<string[]>>;
+}) {
+  const supabase = createClient(); 
+
+
+  const moveExisting = (index: number, dir: -1 | 1) => {
+    const next = [...existingUrls];
+    const target = index + dir;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setExistingUrls(next);
+  };
+
+  const moveNew = (index: number, dir: -1 | 1) => {
+    const next = [...imageFiles];
+    const target = index + dir;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setImageFiles(next);
+  };
+
+  const removeExisting = async (index: number) => {
+    const url = existingUrls[index];
+    const filename = url.split('/').pop();
+    if (filename) {
+      await supabase.storage.from('product-images').remove([filename]);
+    } 
+    setExistingUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeNew = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-3 mb-3">
+        {existingUrls.map((url, i) => (
+          <div key={url} className="relative flex flex-col items-center gap-1">
+            <div className="relative w-20 h-20 rounded-md overflow-hidden border border-[var(--card-border)]">
+              <Image src={url} alt={`Image ${i + 1}`} fill className="object-cover" />
+              <button
+                type="button"
+                onClick={() => removeExisting(i)}
+                className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors"
+              >
+                <X size={10} className="text-white" />
+              </button>
+            </div>
+            <div className="flex gap-1">
+              <button type="button" onClick={() => moveExisting(i, -1)} disabled={i === 0}
+                className="w-5 h-5 flex items-center justify-center rounded bg-[var(--card-border)] hover:bg-[var(--button-gray)] disabled:opacity-30 transition-colors">
+                <ChevronLeft size={10} />
+              </button>
+              <button type="button" onClick={() => moveExisting(i, 1)} disabled={i === existingUrls.length - 1 && imageFiles.length === 0}
+                className="w-5 h-5 flex items-center justify-center rounded bg-[var(--card-border)] hover:bg-[var(--button-gray)] disabled:opacity-30 transition-colors">
+                <ChevronRight size={10} />
+              </button>
+            </div>
+          </div>
+        ))}
+        {imageFiles.map((f, i) => (
+          <div key={`new-${i}`} className="relative flex flex-col items-center gap-1">
+            <div className="relative w-20 h-20 rounded-md overflow-hidden border-2 border-dashed border-[var(--teal)]">
+              <Image src={URL.createObjectURL(f)} alt={`New ${i + 1}`} fill className="object-cover" />
+              <button
+                type="button"
+                onClick={() => removeNew(i)}
+                className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors"
+              >
+                <X size={10} className="text-white" />
+              </button>
+            </div>
+            <div className="flex gap-1">
+              <button type="button" onClick={() => moveNew(i, -1)} disabled={i === 0}
+                className="w-5 h-5 flex items-center justify-center rounded bg-[var(--card-border)] hover:bg-[var(--button-gray)] disabled:opacity-30 transition-colors">
+                <ChevronLeft size={10} />
+              </button>
+              <button type="button" onClick={() => moveNew(i, 1)} disabled={i === imageFiles.length - 1}
+                className="w-5 h-5 flex items-center justify-center rounded bg-[var(--card-border)] hover:bg-[var(--button-gray)] disabled:opacity-30 transition-colors">
+                <ChevronRight size={10} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-[var(--teal)] hover:bg-[var(--teal-hover)] text-white cursor-pointer transition-colors">
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            setImageFiles(prev => [...prev, ...files]);
+            e.target.value = '';
+          }}
+          className="hidden"
+        />
+        Choose Files
+      </label>
+    </div>
+  );
+}
 
 function AddProductModal({
   onClose,
@@ -84,8 +199,8 @@ function AddProductModal({
 }) {
   const supabase = createClient();
   const [form, setForm] = useState(emptyForm);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [existingUrls, setExistingUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -110,12 +225,6 @@ function AddProductModal({
     }));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
 
   const handleSubmit = async () => {
     if (!form.name) {
@@ -125,27 +234,30 @@ function AddProductModal({
     setUploading(true);
     setError("");
 
-    let image_url = form.image_url;
 
-    if (imageFile) {
-      const ext = imageFile.name.split(".").pop();
-      const filename = `${Date.now()}.${ext}`;
+    let uploadedUrls: string[] = [];
+
+    for (const file of imageFiles) {
+      const ext = file.name.split('.').pop();
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error: uploadError } = await supabase.storage
-        .from("product-images")
-        .upload(filename, imageFile);
+        .from('product-images')
+        .upload(filename, file);
 
       if (uploadError) {
-        setError("Image upload failed: " + uploadError.message);
+        setError('Image upload failed: ' + uploadError.message);
         setUploading(false);
         return;
       }
 
       const { data: urlData } = supabase.storage
-        .from("product-images")
+        .from('product-images')
         .getPublicUrl(filename);
 
-      image_url = urlData.publicUrl;
+      uploadedUrls.push(urlData.publicUrl);
     }
+
+    const allImageUrls = [...existingUrls, ...uploadedUrls];
 
     const { error: insertError } = await supabase.from("products").insert({
       name: form.name,
@@ -165,7 +277,8 @@ function AddProductModal({
       availability: form.availability,
       stock: form.stock ? parseInt(form.stock) : 0,
       showing: form.showing,
-      image_url: image_url || null,
+      image_url: allImageUrls[0] || null,
+      image_urls: allImageUrls.length > 0 ? allImageUrls : null,
     });
 
     if (insertError) {
@@ -195,31 +308,13 @@ function AddProductModal({
 
         <div className="p-6">
           <div className="mb-6">
-            <label className={labelClass}>Product Image</label>
-            <div className="flex items-start gap-4">
-              {imagePreview ? (
-                <div className="relative w-28 h-28 rounded-md overflow-hidden border border-[var(--card-border)] flex-shrink-0">
-                  <Image
-                    src={imagePreview}
-                    alt="Preview"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="w-28 h-28 rounded-md border border-dashed border-[var(--input-border)] flex items-center justify-center flex-shrink-0 bg-[var(--card-bg)]">
-                  <Upload size={20} className="text-[var(--input-border)]" />
-                </div>
-              )}
-              <div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="text-sm text-[var(--text)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-[var(--teal)] file:text-white hover:file:bg-[var(--teal-hover)] file:cursor-pointer cursor-pointer"
-                />
-              </div>
-            </div>
+            <label className={labelClass}>Product Images</label>
+            <ImageManager
+              imageFiles={imageFiles}
+              setImageFiles={setImageFiles}
+              existingUrls={existingUrls}
+              setExistingUrls={setExistingUrls}
+            />
           </div>
 
           <div className="space-y-4">
@@ -502,14 +597,17 @@ function ProductRow({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [existingUrls, setExistingUrls] = useState<string[]>(
+    Array.isArray(product.image_urls) ? product.image_urls : 
+    product.image_url ? [product.image_url] : []
+  );
 
   const [form, setForm] = useState({
     name: product.name ?? "",
     description: product.description ?? "",
     price: product.price ?? "",
-    category: product.category ?? Array.isArray(product.category) ? product.category : product.category ? [product.category] : [],
+    category: Array.isArray(product.category) ? product.category : product.category ? [product.category] : [],
     sun: product.sun ?? "",
     light: product.light ?? "",
     watering: product.watering ?? "",
@@ -547,12 +645,7 @@ function ProductRow({
     }));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
+
 
   const handleSave = async () => {
     if (!form.name) {
@@ -562,27 +655,29 @@ function ProductRow({
     setSaving(true);
     setError("");
 
-    let image_url = form.image_url;
+    let uploadedUrls: string[] = [];
 
-    if (imageFile) {
-      const ext = imageFile.name.split(".").pop();
-      const filename = `${Date.now()}.${ext}`;
+    for (const file of imageFiles) {
+      const ext = file.name.split('.').pop();
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error: uploadError } = await supabase.storage
-        .from("product-images")
-        .upload(filename, imageFile);
+        .from('product-images')
+        .upload(filename, file);
 
       if (uploadError) {
-        setError("Image upload failed: " + uploadError.message);
+        setError('Image upload failed: ' + uploadError.message);
         setSaving(false);
         return;
       }
 
       const { data: urlData } = supabase.storage
-        .from("product-images")
+        .from('product-images')
         .getPublicUrl(filename);
 
-      image_url = urlData.publicUrl;
+      uploadedUrls.push(urlData.publicUrl);
     }
+
+    const allImageUrls = [...existingUrls, ...uploadedUrls];
 
     const updates = {
       name: form.name,
@@ -602,7 +697,8 @@ function ProductRow({
       availability: form.availability,
       stock: parseInt(String(form.stock)) || 0,
       showing: form.showing,
-      image_url: image_url || null,
+      image_url: allImageUrls[0] || null,
+      image_urls: allImageUrls.length > 0 ? allImageUrls : null,
     };
 
     const { error: updateError } = await supabase
@@ -615,14 +711,21 @@ function ProductRow({
     } else {
       onUpdate({ ...product, ...updates });
       setEditing(false);
-      setImageFile(null);
-      setImagePreview(null);
     }
 
     setSaving(false);
   };
 
   const handleDelete = async () => {
+    // delete images from storage first
+    const urls: string[] = Array.isArray(product.image_urls) && product.image_urls.length > 0
+      ? product.image_urls
+      : product.image_url ? [product.image_url] : [];
+
+    if (urls.length > 0) {
+      const filenames = urls.map(url => url.split('/').pop()!).filter(Boolean);
+      await supabase.storage.from('product-images').remove(filenames);
+    }
     await supabase.from("products").delete().eq("id", product.id);
     onDelete();
   };
@@ -758,37 +861,13 @@ function ProductRow({
             // ——— EDIT FORM ———
             <div>
               <div className="mb-6">
-                <label className={labelClass}>Product Image</label>
-                <div className="flex items-start gap-4">
-                  <div className="relative w-28 h-28 rounded-md overflow-hidden border border-[var(--card-border)] flex-shrink-0 bg-[var(--card-bg)]">
-                    {imagePreview || form.image_url ? (
-                      <Image
-                        src={imagePreview ?? form.image_url}
-                        alt="Preview"
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Upload
-                          size={20}
-                          className="text-[var(--input-border)]"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="text-sm text-[var(--text)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-[var(--teal)] file:text-white hover:file:bg-[var(--teal-hover)] file:cursor-pointer cursor-pointer"
-                    />
-                    <p className="text-xs text-[var(--input-border)] mt-1.5">
-                      Upload a new image to replace the current one
-                    </p>
-                  </div>
-                </div>
+                <label className={labelClass}>Product Images</label>
+                <ImageManager
+                  imageFiles={imageFiles}
+                  setImageFiles={setImageFiles}
+                  existingUrls={existingUrls}
+                  setExistingUrls={setExistingUrls}
+                />
               </div>
 
               <div className="space-y-4">
@@ -1043,8 +1122,7 @@ function ProductRow({
                   onClick={() => {
                     setEditing(false);
                     setError("");
-                    setImageFile(null);
-                    setImagePreview(null);
+                    setImageFiles([]);
                   }}
                   className="px-5 py-2 rounded-md font-medium text-sm border border-[var(--card-border)] text-[var(--text)] hover:bg-[var(--card-bg)] transition-colors"
                 >
@@ -1055,14 +1133,13 @@ function ProductRow({
           ) : (
             // ——— READ VIEW ———
             <div>
-              {product.image_url && (
-                <div className="relative w-32 h-32 rounded-md overflow-hidden mb-5 border border-[var(--card-border)]">
-                  <Image
-                    src={product.image_url}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                  />
+              {(product.image_urls?.length > 0 || product.image_url) && (
+                <div className="flex flex-wrap gap-2 mb-5">
+                  {(product.image_urls?.length > 0 ? product.image_urls : [product.image_url]).map((url: string, i: number) => (
+                    <div key={url} className="relative w-20 h-20 rounded-md overflow-hidden border border-[var(--card-border)]">
+                      <Image src={url} alt={`${product.name} ${i + 1}`} fill className="object-cover" />
+                    </div>
+                  ))}
                 </div>
               )}
 
