@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   Loader2,
@@ -13,8 +13,6 @@ import {
   Pencil,
   Eye,
   Ban,
-  ChevronLeft,
-  ChevronRight,
   Layers,
 } from "lucide-react";
 import Image from "next/image";
@@ -78,8 +76,12 @@ const labelClass =
 const inputClass =
   "w-full px-3 py-2 bg-[var(--header)] border border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--teal)] text-sm text-[var(--text)]";
 const sectionClass = "border-t border-[var(--card-border)] pt-6 mt-6";
+
+type ImageItem =
+  | { kind: "existing"; url: string }
+  | { kind: "new"; file: File; objectUrl: string };
+
 function ImageManager({
-  
   imageFiles,
   setImageFiles,
   existingUrls,
@@ -90,104 +92,93 @@ function ImageManager({
   existingUrls: string[];
   setExistingUrls: React.Dispatch<React.SetStateAction<string[]>>;
 }) {
-  const supabase = createClient(); 
+  const supabase = createClient();
+  const dragIndex = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
+  const items: ImageItem[] = useMemo(() => [
+    ...existingUrls.map((url): ImageItem => ({ kind: "existing", url })),
+    ...imageFiles.map((file): ImageItem => ({ kind: "new", file, objectUrl: URL.createObjectURL(file) })),
+  ], [existingUrls, imageFiles]);
 
-  const moveExisting = (index: number, dir: -1 | 1) => {
-    const next = [...existingUrls];
-    const target = index + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    setExistingUrls(next);
+  const applyReorder = (from: number, to: number) => {
+    if (from === to) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setExistingUrls(next.filter(i => i.kind === "existing").map(i => (i as any).url));
+    setImageFiles(next.filter(i => i.kind === "new").map(i => (i as any).file));
   };
 
-  const moveNew = (index: number, dir: -1 | 1) => {
-    const next = [...imageFiles];
-    const target = index + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    setImageFiles(next);
-  };
-
-  const removeExisting = async (index: number) => {
-    const url = existingUrls[index];
-    const filename = url.split('/').pop();
-    if (filename) {
-      await supabase.storage.from('product-images').remove([filename]);
-    } 
-    setExistingUrls(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const removeNew = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
+  const removeItem = async (index: number) => {
+    const item = items[index];
+    if (item.kind === "existing") {
+      const filename = item.url.split('/').pop();
+      if (filename) await supabase.storage.from('product-images').remove([filename]);
+      setExistingUrls(prev => prev.filter(u => u !== item.url));
+    } else {
+      setImageFiles(prev => prev.filter(f => f !== item.file));
+    }
   };
 
   return (
     <div>
       <div className="flex flex-wrap gap-3 mb-3">
-        {existingUrls.map((url, i) => (
-          <div key={url} className="relative flex flex-col items-center gap-1">
-            <div className="relative w-20 h-20 rounded-md overflow-hidden border border-[var(--card-border)]">
-              <Image src={url} alt={`Image ${i + 1}`} fill className="object-cover" />
+        {items.map((item, i) => {
+          const src = item.kind === "existing" ? item.url : item.objectUrl;
+          const isNew = item.kind === "new";
+          return (
+            <div
+              key={src}
+              draggable
+              onDragStart={() => { dragIndex.current = i; }}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(i); }}
+              onDragLeave={() => setDragOver(null)}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragIndex.current !== null) applyReorder(dragIndex.current, i);
+                dragIndex.current = null;
+                setDragOver(null);
+              }}
+              onDragEnd={() => { dragIndex.current = null; setDragOver(null); }}
+              className={`relative w-20 h-20 rounded-md overflow-hidden flex-shrink-0 cursor-grab active:cursor-grabbing transition-all ${
+                dragOver === i ? "ring-2 ring-[var(--teal)] scale-105" : ""
+              } ${isNew ? "border-2 border-dashed border-[var(--teal)]" : "border border-[var(--card-border)]"}`}
+            >
+              <Image src={src} alt={`Image ${i + 1}`} fill className="object-cover pointer-events-none" />
+              {/* first image badge */}
+              {i === 0 && (
+                <span className="absolute bottom-0 left-0 right-0 text-[9px] text-center bg-black/50 text-white py-0.5">
+                  Cover
+                </span>
+              )}
               <button
                 type="button"
-                onClick={() => removeExisting(i)}
+                onClick={() => removeItem(i)}
                 className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors"
               >
                 <X size={10} className="text-white" />
               </button>
             </div>
-            <div className="flex gap-1">
-              <button type="button" onClick={() => moveExisting(i, -1)} disabled={i === 0}
-                className="w-5 h-5 flex items-center justify-center rounded bg-[var(--card-border)] hover:bg-[var(--button-gray)] disabled:opacity-30 transition-colors">
-                <ChevronLeft size={10} />
-              </button>
-              <button type="button" onClick={() => moveExisting(i, 1)} disabled={i === existingUrls.length - 1 && imageFiles.length === 0}
-                className="w-5 h-5 flex items-center justify-center rounded bg-[var(--card-border)] hover:bg-[var(--button-gray)] disabled:opacity-30 transition-colors">
-                <ChevronRight size={10} />
-              </button>
-            </div>
-          </div>
-        ))}
-        {imageFiles.map((f, i) => (
-          <div key={`new-${i}`} className="relative flex flex-col items-center gap-1">
-            <div className="relative w-20 h-20 rounded-md overflow-hidden border-2 border-dashed border-[var(--teal)]">
-              <Image src={URL.createObjectURL(f)} alt={`New ${i + 1}`} fill className="object-cover" />
-              <button
-                type="button"
-                onClick={() => removeNew(i)}
-                className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors"
-              >
-                <X size={10} className="text-white" />
-              </button>
-            </div>
-            <div className="flex gap-1">
-              <button type="button" onClick={() => moveNew(i, -1)} disabled={i === 0}
-                className="w-5 h-5 flex items-center justify-center rounded bg-[var(--card-border)] hover:bg-[var(--button-gray)] disabled:opacity-30 transition-colors">
-                <ChevronLeft size={10} />
-              </button>
-              <button type="button" onClick={() => moveNew(i, 1)} disabled={i === imageFiles.length - 1}
-                className="w-5 h-5 flex items-center justify-center rounded bg-[var(--card-border)] hover:bg-[var(--button-gray)] disabled:opacity-30 transition-colors">
-                <ChevronRight size={10} />
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-[var(--teal)] hover:bg-[var(--teal-hover)] text-white cursor-pointer transition-colors">
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            setImageFiles(prev => [...prev, ...files]);
-            e.target.value = '';
-          }}
-          className="hidden"
-        />
-        Choose Files
-      </label>
+      <div className="flex items-center gap-3">
+        <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-[var(--teal)] hover:bg-[var(--teal-hover)] text-white cursor-pointer transition-colors">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              setImageFiles(prev => [...prev, ...files]);
+              e.target.value = '';
+            }}
+            className="hidden"
+          />
+          Choose Files
+        </label>
+      </div>
     </div>
   );
 }
