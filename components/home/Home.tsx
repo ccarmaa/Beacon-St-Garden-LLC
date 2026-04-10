@@ -18,7 +18,8 @@ import {
 
 // Banner photo: 
 // Change link here to update banner photo
-const bannerSrc = "/banner_seedlings.jpeg";
+// const bannerSrc = "/banner_seedlings.jpeg";
+const bannerSrc = "/growingtable.jpeg";
 
 // Shop By Category:
 // Change values here to add a category or update labels, links, and images
