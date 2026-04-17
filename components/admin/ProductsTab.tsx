@@ -1552,6 +1552,7 @@ export default function ProductsTab() {
   const [showGroupsModal, setShowGroupsModal] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
 
   const fetchProducts = async () => {
     const { data, error } = await supabase
@@ -1608,13 +1609,29 @@ export default function ProductsTab() {
         </div>
       </div>
 
-      <input
-        type="text"
-        placeholder="Search products..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-sm px-4 py-2 mb-6 bg-transparent border border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--teal)] text-sm text-[var(--text)] placeholder:text-[var(--input-border)] placeholder:opacity-70"
-      />
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 min-w-[180px] max-w-sm px-4 py-2 bg-transparent border border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--teal)] text-sm text-[var(--text)] placeholder:text-[var(--input-border)] placeholder:opacity-70"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="px-3 py-2 bg-transparent border border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--teal)] text-sm text-[var(--text)] cursor-pointer"
+        >
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="a-z">A–Z</option>
+          <option value="z-a">Z–A</option>
+          <option value="stock-high">Stock: High → Low</option>
+          <option value="stock-low">Stock: Low → High</option>
+          <option value="price-high">Price: High → Low</option>
+          <option value="price-low">Price: Low → High</option>
+        </select>
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -1626,8 +1643,20 @@ export default function ProductsTab() {
         </p>
       ) : (
         <div className="space-y-2">
-          {products
+          {[...products]
             .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+            .sort((a, b) => {
+              switch (sortBy) {
+                case "oldest": return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                case "a-z": return a.name.localeCompare(b.name);
+                case "z-a": return b.name.localeCompare(a.name);
+                case "stock-high": return (b.stock ?? 0) - (a.stock ?? 0);
+                case "stock-low": return (a.stock ?? 0) - (b.stock ?? 0);
+                case "price-high": return (b.price ?? 0) - (a.price ?? 0);
+                case "price-low": return (a.price ?? 0) - (b.price ?? 0);
+                default: return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+              }
+            })
             .map((product) => (
               <ProductRow
                 key={product.id}
