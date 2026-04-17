@@ -433,10 +433,10 @@ function ProductPageContent() {
             )}
             {product.soil && product.soil.length > 0 && (
               <div className="flex items-baseline justify-between py-3 border-b border-dashed border-[var(--card-border)]">
-                <span className="text-xs uppercase tracking-widest text-[var(--input-border)]">
+                <span className="text-xs uppercase tracking-widest text-[var(--input-border)] flex-shrink-0">
                   Soil
                 </span>
-                <span className="text-sm text-[var(--text)]">
+                <span className="text-sm text-[var(--text)] text-right ml-4">
                   {product.soil.join(", ")}
                 </span>
               </div>
