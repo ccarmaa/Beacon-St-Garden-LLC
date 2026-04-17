@@ -256,11 +256,11 @@ export default function ShopPage() {
         <div className="relative h-full mx-auto px-8 flex items-center">
           <div className="bg-[var(--hero-square)] backdrop-blur-sm p-5 max-w-lg">
             <div className="border border-[var(--lines)] p-5">
-              <h1 className="text-2xl md:text-3xl font-semibold text-[var(--text)] mb-2">
+              <h1 className="text-xl md:text-3xl font-semibold text-[var(--text)] mb-2">
                 Shop Beacon Street Gardens
               </h1>
-              <p className="text-small md:text-base text-[var(--text)]">
-                Reserve fresh vegetables, herbs, and flowers
+              <p className="text-xs md:text-base text-[var(--text)]">
+                Reserve fresh vegetables, herbs, and flowers{" "}
                 <br className="hidden md:block" />
                 fresh from our garden.
               </p>
@@ -557,7 +557,7 @@ export default function ShopPage() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="pl-2 md:px-4 py-2 bg-transparent border border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--teal)] text-sm text-[var(--text)] cursor-pointer"
+                  className="appearance-none pl-2 md:px-4 py-2 bg-transparent border border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--teal)] text-sm text-[var(--text)] cursor-pointer"
                 >
                   <option value=" ">Sort by: Newest</option>
                   <option value="price-low">Price: Low to High</option>
