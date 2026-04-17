@@ -4,8 +4,12 @@ import ProductCard from "@/components/shop/ProductCard";
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/supabase";
-import { Loader2, SlidersHorizontal, ChevronUp, ChevronDown} from "lucide-react";
-
+import {
+  Loader2,
+  SlidersHorizontal,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 
 export default function ShopPage() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
@@ -16,17 +20,17 @@ export default function ShopPage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const selectedCategories = searchParams.getAll('category');
-  const selectedAvailability = searchParams.getAll('availability');
-  const searchQuery = searchParams.get('search') ?? '';
-  const sortBy = searchParams.get('sort') ?? 'newest';
+  const selectedCategories = searchParams.getAll("category");
+  const selectedAvailability = searchParams.getAll("availability");
+  const searchQuery = searchParams.get("search") ?? "";
+  const sortBy = searchParams.get("sort") ?? "newest";
 
   const updateParams = (updates: Record<string, string | string[]>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
       params.delete(key);
       if (Array.isArray(value)) {
-        value.forEach(v => params.append(key, v));
+        value.forEach((v) => params.append(key, v));
       } else if (value) {
         params.set(key, value);
       }
@@ -37,66 +41,82 @@ export default function ShopPage() {
   // toggle filter selections
   const toggleCategory = (category: string) => {
     const next = selectedCategories.includes(category)
-      ? selectedCategories.filter(c => c !== category)
+      ? selectedCategories.filter((c) => c !== category)
       : [...selectedCategories, category];
     updateParams({ category: next });
   };
 
   const toggleAvailability = (availability: string) => {
     const next = selectedAvailability.includes(availability)
-      ? selectedAvailability.filter(a => a !== availability)
+      ? selectedAvailability.filter((a) => a !== availability)
       : [...selectedAvailability, availability];
     updateParams({ availability: next });
   };
   const setSearchQuery = (q: string) => updateParams({ search: q });
   const setSortBy = (s: string) => updateParams({ sort: s });
-  const selectedSun = searchParams.getAll('sun');
-  const categoryOpen = searchParams.get('catOpen') !== 'false';
-  const sunOpen = searchParams.get('sunOpen') === 'true';
-  const availabilityOpen = searchParams.get('availOpen') === 'true';
-  const lightOpen = searchParams.get('lightOpen') === 'true';
-  const soilOpen = searchParams.get('soilOpen') === 'true';
-  const lifeSpanOpen = searchParams.get('lifeSpanOpen') === 'true';
+  const selectedSun = searchParams.getAll("sun");
+  const categoryOpen = searchParams.get("catOpen") !== "false";
+  const sunOpen = searchParams.get("sunOpen") === "true";
+  const availabilityOpen = searchParams.get("availOpen") === "true";
+  const lightOpen = searchParams.get("lightOpen") === "true";
+  const soilOpen = searchParams.get("soilOpen") === "true";
+  const lifeSpanOpen = searchParams.get("lifeSpanOpen") === "true";
 
-  const setCategoryOpen = (val: boolean) => updateParams({ catOpen: val ? 'true' : 'false' });
-  const setSunOpen = (val: boolean) => updateParams({ sunOpen: val ? 'true' : 'false' });
-  const setAvailabilityOpen = (val: boolean) => updateParams({ availOpen: val ? 'true' : 'false' });
-  const setLightOpen = (val: boolean) => updateParams({ lightOpen: val ? 'true' : 'false' });
-  const setSoilOpen = (val: boolean) => updateParams({ soilOpen: val ? 'true' : 'false' });
-  const setLifeSpanOpen = (val: boolean) => updateParams({ lifeSpanOpen: val ? 'true' : 'false' });
+  const setCategoryOpen = (val: boolean) =>
+    updateParams({ catOpen: val ? "true" : "false" });
+  const setSunOpen = (val: boolean) =>
+    updateParams({ sunOpen: val ? "true" : "false" });
+  const setAvailabilityOpen = (val: boolean) =>
+    updateParams({ availOpen: val ? "true" : "false" });
+  const setLightOpen = (val: boolean) =>
+    updateParams({ lightOpen: val ? "true" : "false" });
+  const setSoilOpen = (val: boolean) =>
+    updateParams({ soilOpen: val ? "true" : "false" });
+  const setLifeSpanOpen = (val: boolean) =>
+    updateParams({ lifeSpanOpen: val ? "true" : "false" });
 
-  const selectedLight = searchParams.getAll('light');
-  const selectedSoil = searchParams.getAll('soil');
-  const selectedLifeSpan = searchParams.getAll('lifeSpan');
+  const selectedLight = searchParams.getAll("light");
+  const selectedSoil = searchParams.getAll("soil");
+  const selectedLifeSpan = searchParams.getAll("lifeSpan");
 
   const toggleLight = (val: string) => {
-    const next = selectedLight.includes(val) ? selectedLight.filter(l => l !== val) : [...selectedLight, val];
+    const next = selectedLight.includes(val)
+      ? selectedLight.filter((l) => l !== val)
+      : [...selectedLight, val];
     updateParams({ light: next });
   };
   const toggleSoil = (val: string) => {
-    const next = selectedSoil.includes(val) ? selectedSoil.filter(s => s !== val) : [...selectedSoil, val];
+    const next = selectedSoil.includes(val)
+      ? selectedSoil.filter((s) => s !== val)
+      : [...selectedSoil, val];
     updateParams({ soil: next });
   };
   const toggleLifeSpan = (val: string) => {
-    const next = selectedLifeSpan.includes(val) ? selectedLifeSpan.filter(l => l !== val) : [...selectedLifeSpan, val];
+    const next = selectedLifeSpan.includes(val)
+      ? selectedLifeSpan.filter((l) => l !== val)
+      : [...selectedLifeSpan, val];
     updateParams({ lifeSpan: next });
   };
 
   const toggleSun = (sun: string) => {
-  const next = selectedSun.includes(sun)
-      ? selectedSun.filter(s => s !== sun)
+    const next = selectedSun.includes(sun)
+      ? selectedSun.filter((s) => s !== sun)
       : [...selectedSun, sun];
     updateParams({ sun: next });
   };
 
   const SUN_FILTER_GROUPS: Record<string, string[]> = {
-    "Full Sun":                    ["Full Sun", "Part-Sun to Full-Sun"],
-    "Part Sun":                    ["Part Sun", "Part-Sun to Full-Sun"],
-    "Part-Shade":                  ["Part-Shade", "Part-Shade to Full-Shade"],
-    "Part-Shade to Full-Shade":    ["Part-Shade to Full-Shade", "Part-Shade", "Shade"],
-    "Part-Sun to Full-Sun":        ["Full-Sun", "Part Sun", "Part-Sun to Full-Sun"],
-    "Shade":                       ["Shade", "Part-Shade to Full-Shade"],
-    "Dapple Shade":                ["Dapple Shade", "Part-Shade"],
+    "Full Sun": ["Full Sun", "Part-Sun to Full-Sun"],
+    "Part Sun": ["Part Sun", "Part-Sun to Full-Sun"],
+    "Part-Shade": ["Part-Shade", "Part-Shade to Full-Shade"],
+    "Part-Shade to Full-Shade": [
+      "Part-Shade to Full-Shade",
+      "Part-Shade",
+      "Shade",
+    ],
+    "Part-Sun to Full-Sun": ["Full-Sun", "Part Sun", "Part-Sun to Full-Sun"],
+    Shade: ["Shade", "Part-Shade to Full-Shade"],
+    "Dapple Shade": ["Dapple Shade", "Part-Shade"],
   };
   // filter & sort products
   const filteredProducts = useMemo(() => {
@@ -105,18 +125,18 @@ export default function ShopPage() {
 
     // apply a category filter
     if (selectedCategories.length > 0) {
-      filtered = filtered.filter(p =>
+      filtered = filtered.filter((p) =>
         Array.isArray(p.category)
           ? p.category.some((c: string) => selectedCategories.includes(c))
-          : selectedCategories.includes(p.category)
+          : selectedCategories.includes(p.category),
       );
     }
 
     if (selectedSun.length > 0) {
       const expandedSun = new Set(
-        selectedSun.flatMap(s => SUN_FILTER_GROUPS[s] ?? [s])
+        selectedSun.flatMap((s) => SUN_FILTER_GROUPS[s] ?? [s]),
       );
-      filtered = filtered.filter(p => p.sun && expandedSun.has(p.sun));
+      filtered = filtered.filter((p) => p.sun && expandedSun.has(p.sun));
     }
 
     // apply availability filter
@@ -127,23 +147,26 @@ export default function ShopPage() {
     }
 
     if (selectedLight.length > 0) {
-      filtered = filtered.filter(p => selectedLight.includes(p.light));
+      filtered = filtered.filter((p) => selectedLight.includes(p.light));
     }
     if (selectedSoil.length > 0) {
-      filtered = filtered.filter(p =>
-        Array.isArray(p.soil) ? p.soil.some((s: string) => selectedSoil.includes(s)) : selectedSoil.includes(p.soil)
+      filtered = filtered.filter((p) =>
+        Array.isArray(p.soil)
+          ? p.soil.some((s: string) => selectedSoil.includes(s))
+          : selectedSoil.includes(p.soil),
       );
     }
     if (selectedLifeSpan.length > 0) {
-      filtered = filtered.filter(p => selectedLifeSpan.includes(p.life_span));
+      filtered = filtered.filter((p) => selectedLifeSpan.includes(p.life_span));
     }
 
     // apply search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter((p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.group_name && p.group_name.toLowerCase().includes(q))
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.group_name && p.group_name.toLowerCase().includes(q)),
       );
     }
 
@@ -206,18 +229,21 @@ export default function ShopPage() {
           group_name: p.product_groups?.name ?? null,
         }));
         setAllProducts(products);
-        console.log("products with groups:", products.map(p => ({ name: p.name, group_id: p.group_id, group_name: p.group_name })));
+        console.log(
+          "products with groups:",
+          products.map((p) => ({
+            name: p.name,
+            group_id: p.group_id,
+            group_name: p.group_name,
+          })),
+        );
         setCurrentPage(1);
       }
       setLoading(false);
-      
     };
 
     fetchProducts();
-    
   }, []);
-
-  
 
   return (
     <div className="min-h-screen bg-[var(--header)]">
@@ -230,12 +256,12 @@ export default function ShopPage() {
         <div className="relative h-full mx-auto px-8 flex items-center">
           <div className="bg-[var(--hero-square)] backdrop-blur-sm p-5 max-w-lg">
             <div className="border border-[var(--lines)] p-5">
-              <h1 className="text-3xl font-semibold text-[var(--text)] mb-2">
+              <h1 className="text-2xl md:text-3xl font-semibold text-[var(--text)] mb-2">
                 Shop Beacon Street Gardens
               </h1>
-              <p className="text-base text-[var(--text)]">
+              <p className="text-small md:text-base text-[var(--text)]">
                 Reserve fresh vegetables, herbs, and flowers
-                <br />
+                <br className="hidden md:block" />
                 fresh from our garden.
               </p>
             </div>
@@ -254,10 +280,16 @@ export default function ShopPage() {
               onClick={() => setFiltersOpen(!filtersOpen)}
             >
               <SlidersHorizontal size={14} />
-              {filtersOpen ? 'Hide Filters' : 'Filters'}
-              {filtersOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {filtersOpen ? "Hide Filters" : "Filters"}
+              {filtersOpen ? (
+                <ChevronUp size={14} />
+              ) : (
+                <ChevronDown size={14} />
+              )}
             </button>
-            <div className={`${filtersOpen ? 'block' : 'hidden'} mb-2 md:block bg-[var(--card-bg)] p-3 md:p-5 rounded-lg border border-[var(--card-border)] shadow-sm md:sticky top-24`}>
+            <div
+              className={`${filtersOpen ? "block" : "hidden"} mb-2 md:block bg-[var(--card-bg)] p-3 md:p-5 rounded-lg border border-[var(--card-border)] shadow-sm md:sticky top-24`}
+            >
               <h3 className="text-sm font-semibold text-[var(--text)] mb-2 pb-2 border-b border-[var(--card-border)] md:text-base md:mb-3">
                 Filters
               </h3>
@@ -270,34 +302,39 @@ export default function ShopPage() {
                   className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
                 >
                   <span>Category</span>
-                  {categoryOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  {categoryOpen ? (
+                    <ChevronUp size={11} />
+                  ) : (
+                    <ChevronDown size={11} />
+                  )}
                 </button>
                 {categoryOpen && (
-                <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
-                  {/*TO ADD MORE CATEGORIES, ADD TO LIST BELOW*/}
-                  {[
-                    "Vegetable/Fruit",
-                    "Herbs",
-                    "Flowers",
-                    "Annual",
-                    "Perennial",
-                    "House Plant",
-                    "Ornamental Foliage",
-                  ].map((category) => (
-                    <label
-                      key={category}
-                      className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
-                        checked={selectedCategories.includes(category)}
-                        onChange={() => toggleCategory(category)}
-                      />
-                      <span className="text-sm">{category}</span>
-                    </label>
-                  ))}
-                </div>)}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
+                    {/*TO ADD MORE CATEGORIES, ADD TO LIST BELOW*/}
+                    {[
+                      "Vegetable/Fruit",
+                      "Herbs",
+                      "Flowers",
+                      "Annual",
+                      "Perennial",
+                      "House Plant",
+                      "Ornamental Foliage",
+                    ].map((category) => (
+                      <label
+                        key={category}
+                        className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                          checked={selectedCategories.includes(category)}
+                          onChange={() => toggleCategory(category)}
+                        />
+                        <span className="text-sm">{category}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
               {/*sun*/}
               <div className="mb-3 md:mb-5">
@@ -307,7 +344,17 @@ export default function ShopPage() {
                   className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
                 >
                   <span>Sun</span>
-                  {sunOpen ? <ChevronUp size={11} className="group-hover:text-[var(--rust)] transition-colors" /> : <ChevronDown size={11} className="group-hover:text-[var(--rust)] transition-colors" />}
+                  {sunOpen ? (
+                    <ChevronUp
+                      size={11}
+                      className="group-hover:text-[var(--rust)] transition-colors"
+                    />
+                  ) : (
+                    <ChevronDown
+                      size={11}
+                      className="group-hover:text-[var(--rust)] transition-colors"
+                    />
+                  )}
                 </button>
                 {sunOpen && (
                   <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
@@ -334,20 +381,33 @@ export default function ShopPage() {
                 <button
                   type="button"
                   onClick={() => setLightOpen(!lightOpen)}
-
                   className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
                 >
                   <span>Light</span>
-                  {lightOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  {lightOpen ? (
+                    <ChevronUp size={11} />
+                  ) : (
+                    <ChevronDown size={11} />
+                  )}
                 </button>
                 {lightOpen && (
                   <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
-                    {["Bright Direct", "Bright Indirect", "Medium", "Low"].map((val) => (
-                      <label key={val} className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors">
-                        <input type="checkbox" className="w-4 h-4 accent-[var(--teal)] cursor-pointer" checked={selectedLight.includes(val)} onChange={() => toggleLight(val)} />
-                        <span className="text-sm">{val}</span>
-                      </label>
-                    ))}
+                    {["Bright Direct", "Bright Indirect", "Medium", "Low"].map(
+                      (val) => (
+                        <label
+                          key={val}
+                          className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                            checked={selectedLight.includes(val)}
+                            onChange={() => toggleLight(val)}
+                          />
+                          <span className="text-sm">{val}</span>
+                        </label>
+                      ),
+                    )}
                   </div>
                 )}
               </div>
@@ -360,13 +420,35 @@ export default function ShopPage() {
                   className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
                 >
                   <span>Soil</span>
-                  {soilOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  {soilOpen ? (
+                    <ChevronUp size={11} />
+                  ) : (
+                    <ChevronDown size={11} />
+                  )}
                 </button>
                 {soilOpen && (
                   <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
-                    {["rich", "well-drained", "moist", "high in organic matter", "wet", "nutrient-poor", "sandy or gravely", "loose", "fertile"].map((val) => (
-                      <label key={val} className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors">
-                        <input type="checkbox" className="w-4 h-4 accent-[var(--teal)] cursor-pointer" checked={selectedSoil.includes(val)} onChange={() => toggleSoil(val)} />
+                    {[
+                      "rich",
+                      "well-drained",
+                      "moist",
+                      "high in organic matter",
+                      "wet",
+                      "nutrient-poor",
+                      "sandy or gravely",
+                      "loose",
+                      "fertile",
+                    ].map((val) => (
+                      <label
+                        key={val}
+                        className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                          checked={selectedSoil.includes(val)}
+                          onChange={() => toggleSoil(val)}
+                        />
                         <span className="text-sm">{val}</span>
                       </label>
                     ))}
@@ -382,13 +464,25 @@ export default function ShopPage() {
                   className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
                 >
                   <span>Life Span</span>
-                  {lifeSpanOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  {lifeSpanOpen ? (
+                    <ChevronUp size={11} />
+                  ) : (
+                    <ChevronDown size={11} />
+                  )}
                 </button>
                 {lifeSpanOpen && (
                   <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
                     {["Annual", "Perennial"].map((val) => (
-                      <label key={val} className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors">
-                        <input type="checkbox" className="w-4 h-4 accent-[var(--teal)] cursor-pointer" checked={selectedLifeSpan.includes(val)} onChange={() => toggleLifeSpan(val)} />
+                      <label
+                        key={val}
+                        className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                          checked={selectedLifeSpan.includes(val)}
+                          onChange={() => toggleLifeSpan(val)}
+                        />
                         <span className="text-sm">{val}</span>
                       </label>
                     ))}
@@ -404,26 +498,31 @@ export default function ShopPage() {
                   className="flex items-center gap-1 font-medium text-[var(--text)] hover:text-[var(--rust)] mb-1.5 text-xs md:text-sm transition-colors group"
                 >
                   <span>Availability</span>
-                  {availabilityOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  {availabilityOpen ? (
+                    <ChevronUp size={11} />
+                  ) : (
+                    <ChevronDown size={11} />
+                  )}
                 </button>
                 {availabilityOpen && (
-                <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
-                  {/*TO ADD DIFFERENT AVAILABILITY, ADD TO LIST BELOW*/}
-                  {["Ready Now", "Coming Soon"].map((availability) => (
-                    <label
-                      key={availability}
-                      className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
-                        checked={selectedAvailability.includes(availability)}
-                        onChange={() => toggleAvailability(availability)}
-                      />
-                      <span className="text-sm">{availability}</span>
-                    </label>
-                  ))}
-                </div>)}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 md:block md:space-y-1.5">
+                    {/*TO ADD DIFFERENT AVAILABILITY, ADD TO LIST BELOW*/}
+                    {["Ready Now", "Coming Soon"].map((availability) => (
+                      <label
+                        key={availability}
+                        className="flex items-center gap-2 cursor-pointer hover:text-[var(--rust)] transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                          checked={selectedAvailability.includes(availability)}
+                          onChange={() => toggleAvailability(availability)}
+                        />
+                        <span className="text-sm">{availability}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/*clears all filters*/}
