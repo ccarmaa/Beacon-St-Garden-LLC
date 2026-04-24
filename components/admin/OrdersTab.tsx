@@ -10,6 +10,9 @@ import {
   X,
   Search,
   Trash2,
+  Archive,
+  ArchiveRestore,
+  FileDown,
 } from "lucide-react";
 
 
@@ -31,7 +34,7 @@ type Reservation = {
   email: string | null;
   order_notes: string | null;
   availability: Record<string, string> | null;
-  status: "unconfirmed" | "confirmed" | "completed";
+  status: "unconfirmed" | "confirmed" | "completed" | "archived";
   proposed_pickup: string | null;
   confirmed_at: string | null;
   completed_at: string | null;
@@ -965,9 +968,19 @@ function ReservationRow({
 
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const handleArchive = async () => {
+    await supabase.from("reservations").update({ status: "archived" }).eq("id", reservation.id);
+    onUpdate();
+  };
+
+  const handleUnarchive = async () => {
+    await supabase.from("reservations").update({ status: "completed" }).eq("id", reservation.id);
+    onUpdate();
+  };
+
   const handleDelete = async () => {
     //restore stock first
-    if (reservation.status !== "completed") {
+    if (reservation.status !== "completed" && reservation.status !== "archived") {
     for (const item of items) {
       if (!item.product_id) continue;
       const { data: product } = await supabase
@@ -994,6 +1007,8 @@ function ReservationRow({
       return `Pickup: ${reservation.proposed_pickup || "—"}`;
     if (reservation.status === "completed")
       return `Completed ${formatDateTime(reservation.completed_at)}`;
+    if (reservation.status === "archived")
+      return `Archived · Completed ${formatDateTime(reservation.completed_at)}`;
   };
 
   return (
@@ -1192,7 +1207,24 @@ function ReservationRow({
                 
               </div>
             </div>
-            <div className="mt-5 pt-4 border-t border-[var(--card-border)]">
+            <div className="mt-5 pt-4 border-t border-[var(--card-border)] flex items-center gap-5">
+              {reservation.status === "archived" ? (
+                <button
+                  onClick={handleUnarchive}
+                  className="flex items-center gap-2 text-sm text-[var(--input-border)] hover:text-[var(--teal)] transition-colors"
+                >
+                  <ArchiveRestore size={14} />
+                  Unarchive
+                </button>
+              ) : reservation.status === "completed" ? (
+                <button
+                  onClick={handleArchive}
+                  className="flex items-center gap-2 text-sm text-[var(--input-border)] hover:text-[var(--teal)] transition-colors"
+                >
+                  <Archive size={14} />
+                  Archive
+                </button>
+              ) : null}
               {!confirmDelete ? (
                 <button
                   onClick={() => setConfirmDelete(true)}
@@ -1329,12 +1361,14 @@ function ReservationSection({
   title,
   reservations,
   onUpdate,
+  defaultCollapsed = false,
 }: {
   title: string;
   reservations: Reservation[];
   onUpdate: () => void;
+  defaultCollapsed?: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   return (
     <div className="mb-8">
@@ -1371,11 +1405,179 @@ function ReservationSection({
   );
 }
 
+function ExportModal({
+  reservations,
+  onClose,
+}: {
+  reservations: Reservation[];
+  onClose: () => void;
+}) {
+  const [selected, setSelected] = useState({
+    unconfirmed: true,
+    confirmed: true,
+    completed: true,
+    archived: false,
+  });
+
+  const toggle = (key: keyof typeof selected) =>
+    setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const filtered = reservations.filter((r) => {
+    if (r.status === "archived") return selected.archived;
+    if (r.status === "unconfirmed") return selected.unconfirmed;
+    if (r.status === "confirmed") return selected.confirmed;
+    if (r.status === "completed") return selected.completed;
+    return false;
+  });
+
+  const handleExport = () => {
+    const headers = [
+      "Name", "Email", "Status", "Items", "Total ($)",
+      "Pickup Time", "Order Notes", "Submitted", "Confirmed", "Completed",
+    ];
+    const rows = filtered.map((r) => {
+      const total =
+        r.final_cost ??
+        r.reservation_items.reduce((s, i) => s + i.price * i.quantity, 0);
+      return [
+        r.name,
+        r.email ?? "",
+        r.status,
+        r.reservation_items.map((i) => `${i.product_name} x${i.quantity}`).join(" | "),
+        total.toFixed(2),
+        r.proposed_pickup ?? "",
+        r.order_notes ?? "",
+        formatDateTime(r.created_at),
+        formatDateTime(r.confirmed_at),
+        formatDateTime(r.completed_at),
+      ];
+    });
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `orders-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    onClose();
+  };
+
+  const OPTIONS = [
+    { key: "unconfirmed", label: "Unconfirmed" },
+    { key: "confirmed",   label: "Confirmed"   },
+    { key: "completed",   label: "Completed"   },
+    { key: "archived",    label: "Archived"    },
+  ] as const;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="relative bg-[var(--header)] rounded-lg shadow-xl border border-[var(--card-border)] w-full max-w-sm mx-4">
+        <div className="px-6 py-4 border-b border-[var(--card-border)] flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-[var(--text)]">Export Orders</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--card-bg)] hover:bg-[var(--card-border)] transition-colors text-[var(--text)]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-xs uppercase tracking-widest text-[var(--input-border)]">Include</p>
+          <div className="space-y-3">
+            {OPTIONS.map(({ key, label }) => (
+              <label key={key} className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={selected[key]}
+                  onChange={() => toggle(key)}
+                  className="w-4 h-4 accent-[var(--teal)] cursor-pointer"
+                />
+                <span className="text-sm text-[var(--text)] group-hover:text-[var(--teal)] transition-colors">
+                  {label}
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="pt-4 border-t border-[var(--card-border)] flex items-center justify-between">
+            <span className="text-xs text-[var(--input-border)]">
+              {filtered.length} order{filtered.length !== 1 ? "s" : ""}
+            </span>
+            <button
+              onClick={handleExport}
+              disabled={filtered.length === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                filtered.length === 0
+                  ? "bg-[var(--disabled-bg)] text-[var(--disabled-text)] cursor-not-allowed"
+                  : "bg-[var(--teal)] hover:bg-[var(--teal-hover)] text-white"
+              }`}
+            >
+              <FileDown size={14} />
+              Download CSV
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArchivedModal({
+  reservations,
+  onClose,
+  onUpdate,
+}: {
+  reservations: Reservation[];
+  onClose: () => void;
+  onUpdate: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="relative bg-[var(--header)] rounded-lg shadow-xl border border-[var(--card-border)] w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+        <div className="sticky top-0 bg-[var(--header)] border-b border-[var(--card-border)] px-6 py-4 flex items-center gap-3 flex-shrink-0">
+          <Archive size={15} className="text-[var(--input-border)]" />
+          <h2 className="text-lg font-semibold text-[var(--text)]">Archived Orders</h2>
+          <span className="text-xs text-[var(--input-border)] bg-[var(--card-bg)] border border-[var(--card-border)] px-2 py-0.5 rounded-full">
+            {reservations.length}
+          </span>
+          <button
+            onClick={onClose}
+            className="ml-auto w-8 h-8 flex items-center justify-center rounded-full bg-[var(--card-bg)] hover:bg-[var(--card-border)] transition-colors text-[var(--text)]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto">
+          {reservations.length === 0 ? (
+            <p className="text-sm text-[var(--input-border)] text-center py-10">
+              No archived orders yet.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {reservations.map((r) => (
+                <ReservationRow key={r.id} reservation={r} onUpdate={onUpdate} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OrdersTab() {
   const supabase = createClient();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showArchivedModal, setShowArchivedModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const fetchReservations = async () => {
     const { data, error } = await supabase
@@ -1414,6 +1616,11 @@ export default function OrdersTab() {
     .sort(
       (a, b) => parsePickupDate(a.proposed_pickup) - parsePickupDate(b.proposed_pickup));
 
+  const archived = reservations
+    .filter((r) => r.status === "archived")
+    .sort(
+      (a, b) => parsePickupDate(b.proposed_pickup) - parsePickupDate(a.proposed_pickup));
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -1426,13 +1633,22 @@ export default function OrdersTab() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-lg font-semibold text-[var(--text)]">Orders</h2>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-[var(--rust)] hover:bg-[var(--dark-rust)] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-        >
-          <Plus size={15} />
-          New Order
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-2 border border-[var(--card-border)] hover:border-[var(--teal)] text-[var(--text)] hover:text-[var(--teal)] px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          >
+            <FileDown size={15} />
+            Export
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-[var(--rust)] hover:bg-[var(--dark-rust)] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          >
+            <Plus size={15} />
+            New Order
+          </button>
+        </div>
       </div>
       <ReservationSection
         title="Unconfirmed"
@@ -1449,10 +1665,35 @@ export default function OrdersTab() {
         reservations={completed}
         onUpdate={fetchReservations}
       />
+      <button
+        onClick={() => setShowArchivedModal(true)}
+        className="flex items-center gap-2 mt-2 text-sm text-[var(--input-border)] hover:text-[var(--teal)] transition-colors"
+      >
+        <Archive size={14} />
+        View Archived Orders
+        {archived.length > 0 && (
+          <span className="text-xs bg-[var(--card-bg)] border border-[var(--card-border)] px-1.5 py-0.5 rounded-full">
+            {archived.length}
+          </span>
+        )}
+      </button>
       {showModal && (
         <NewOrderModal
           onClose={() => setShowModal(false)}
           onSuccess={fetchReservations}
+        />
+      )}
+      {showArchivedModal && (
+        <ArchivedModal
+          reservations={archived}
+          onClose={() => setShowArchivedModal(false)}
+          onUpdate={fetchReservations}
+        />
+      )}
+      {showExportModal && (
+        <ExportModal
+          reservations={reservations}
+          onClose={() => setShowExportModal(false)}
         />
       )}
     </div>
